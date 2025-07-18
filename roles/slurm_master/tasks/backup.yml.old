@@ -29,20 +29,18 @@
       content: |
         #!/bin/bash
         # Backup Slurm configuration
-        BACKUP_BASE="{{ slurm_backup_dir | default('/var/backups/slurm') }}"
-        BACKUP_DIR="${1:-$BACKUP_BASE/config}"
+        BACKUP_DIR="${1:-{{ slurm_backup_dir | default('/var/backups/slurm') }}/config}"
         DATE=$(date +%Y%m%d_%H%M%S)
         mkdir -p "$BACKUP_DIR"
         tar -czf "$BACKUP_DIR/config-$DATE.tar.gz" \
             -C {{ slurm_config_dir }} .
         echo "Config backup: $BACKUP_DIR/config-$DATE.tar.gz"
-
+        
     - dest: "{{ slurm_install_prefix }}/bin/backup-slurm-database"
       content: |
         #!/bin/bash
         # Backup Slurm database
-        BACKUP_BASE="{{ slurm_backup_dir | default('/var/backups/slurm') }}"
-        BACKUP_DIR="${1:-$BACKUP_BASE/database}"
+        BACKUP_DIR="${1:-{{ slurm_backup_dir | default('/var/backups/slurm') }}/database}"
         DATE=$(date +%Y%m%d_%H%M%S)
         mkdir -p "$BACKUP_DIR"
         {% if slurm_enable_slurmdbd | default(true) %}
@@ -59,39 +57,39 @@
     content: |
       #!/bin/bash
       # Main Slurm backup script
-
+      
       set -euo pipefail
-
+      
       BACKUP_DIR="{{ slurm_backup_dir | default('/var/backups/slurm') }}"
       DATE=$(date +%Y%m%d_%H%M%S)
       LOG_FILE="${BACKUP_DIR}/backup-${DATE}.log"
-
+      
       log() {
           echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "${LOG_FILE}"
       }
-
+      
       log "Starting Slurm backup process"
-
+      
       BACKUP_SUBDIR="${BACKUP_DIR}/${DATE}"
       mkdir -p "${BACKUP_SUBDIR}"
-
+      
       log "Backing up configuration files..."
       {{ slurm_install_prefix }}/bin/backup-slurm-config \
           "${BACKUP_SUBDIR}/config"
-
+      
       {% if slurm_enable_slurmdbd | default(true) %}
       log "Backing up database..."
       {{ slurm_install_prefix }}/bin/backup-slurm-database \
           "${BACKUP_SUBDIR}/database"
       {% endif %}
-
+      
       log "Creating compressed archive..."
       cd "${BACKUP_DIR}"
       tar -czf "slurm-backup-${DATE}.tar.gz" "${DATE}/"
       rm -rf "${DATE}/"
-
-      SIZE=$(du -h "slurm-backup-${DATE}.tar.gz" | cut -f1)
-      log "Backup completed: slurm-backup-${DATE}.tar.gz (${SIZE})"
+      
+      BACKUP_SIZE=$(du -h "slurm-backup-${DATE}.tar.gz" | cut -f1)
+      log "Backup completed: slurm-backup-${DATE}.tar.gz (${BACKUP_SIZE})"
     dest: "{{ slurm_install_prefix }}/bin/backup-slurm-full"
     owner: root
     group: root
@@ -108,7 +106,7 @@
     weekday: "{{ item.weekday | default('*') }}"
     user: root
     job: "{{ item.job }}"
-    state: "{{ 'present' if slurm_backup | default(true) else 'absent' }}"
+    state: "{{ 'present' if slurm_enable_backup | default(true) else 'absent' }}"
   loop:
     - name: "configuration"
       hour: "2"
@@ -132,39 +130,23 @@
     content: |
       #!/bin/bash
       # Slurm backup verification script
-
+      
       BACKUP_DIR="{{ slurm_backup_dir | default('/var/backups/slurm') }}"
-
+      
       echo "=== Slurm Backup Status ==="
       echo "Backup directory: $BACKUP_DIR"
       echo ""
-
+      
       if [[ ! -d "$BACKUP_DIR" ]]; then
           echo "ERROR: Backup directory does not exist!"
           exit 1
       fi
-
+      
       echo "Recent backups:"
       find "$BACKUP_DIR" -name "slurm-backup-*.tar.gz" \
           -type f -mtime -7 -exec ls -lh {} \; | sort -k9
       echo ""
-
-      LATEST=$(find "$BACKUP_DIR" -name "slurm-backup-*.tar.gz" \
-          -type f -printf '%T@ %p\n' | sort -n | tail -1 | cut -d' ' -f2-)
-
-      if [[ -n "$LATEST" ]]; then
-          AGE=$(( ($(date +%s) - $(stat -c %Y "$LATEST")) / 86400 ))
-          echo "Latest backup: $(basename "$LATEST")"
-          echo "Age: $AGE days"
-
-          if [[ $AGE -gt 7 ]]; then
-              echo "WARNING: Latest backup is older than 7 days!"
-          fi
-      else
-          echo "WARNING: No backups found!"
-      fi
-
-      echo ""
+      
       echo "Backup status check completed."
     dest: "{{ slurm_install_prefix }}/bin/check-slurm-backups"
     owner: root
@@ -183,15 +165,15 @@
       ================================================================
       РЕЗЕРВНОЕ КОПИРОВАНИЕ SLURM НАСТРОЕНО
       ================================================================
-
+      
       Доступные команды:
-      - Полное резервное копирование:
+      - Полное резервное копирование: 
         {{ slurm_install_prefix }}/bin/backup-slurm-full
-      - Копирование конфигурации:
+      - Копирование конфигурации: 
         {{ slurm_install_prefix }}/bin/backup-slurm-config
-      - Проверка резервных копий:
+      - Проверка резервных копий: 
         {{ slurm_install_prefix }}/bin/check-slurm-backups
-
+      
       Расположение: {{ slurm_backup_dir | default('/var/backups/slurm') }}
       ================================================================
   tags: [backup, summary]

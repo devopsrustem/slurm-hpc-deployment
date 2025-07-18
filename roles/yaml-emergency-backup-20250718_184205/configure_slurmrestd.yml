@@ -2,6 +2,7 @@
 # =============================================================================
 # НАСТРОЙКА SLURM REST API (SLURMRESTD)
 # =============================================================================
+
 - name: "Создание пользователя slurmrestd"
   user:
     name: "{{slurm_restd_user | default('slurmrestd')}}"
@@ -12,6 +13,7 @@
     groups: "{{slurm_group}}"
     append: true
   tags: [slurmrestd, users]
+
 - name: "Создание директорий для slurmrestd"
   file:
     path: "{{item}}"
@@ -25,6 +27,7 @@
   - /var/run/slurmrestd
   - "{{slurm_restd_config_dir | default('/etc/slurm/restd')}}"
   tags: [slurmrestd, directories]
+
 - name: "Установка зависимостей для REST API"
   package:
     name: "{{item}}"
@@ -36,6 +39,7 @@
   - libssl-dev
   when: ansible_os_family == "Debian"
   tags: [slurmrestd, packages]
+
 - name: "Установка зависимостей для REST API (RHEL/CentOS)"
   package:
     name: "{{item}}"
@@ -47,6 +51,7 @@
   - openssl-devel
   when: ansible_os_family == "RedHat"
   tags: [slurmrestd, packages]
+
 - name: "Создание конфигурационного файла slurmrestd"
   template:
     src: slurmrestd.conf.j2
@@ -58,6 +63,7 @@
   notify:
   - restart slurmrestd
   tags: [slurmrestd, config]
+
 - name: "Создание systemd unit файла для slurmrestd"
   template:
     src: slurmrestd.service.j2
@@ -69,6 +75,7 @@
   - reload systemd
   - restart slurmrestd
   tags: [slurmrestd, systemd]
+
 - name: "Настройка JWT аутентификации для REST API"
   block:
 - name: "Копирование JWT ключей для slurmrestd"
@@ -81,6 +88,7 @@
       remote_src: true
     notify:
     - restart slurmrestd
+
 - name: "Создание JWKS файла для REST API"
     template:
       src: slurm.jwks.j2
@@ -90,6 +98,7 @@
       mode: "0644"
     notify:
     - restart slurmrestd
+
 - name: "Установка генератора JWT токенов"
     template:
       src: jwt_generator.py.j2
@@ -97,6 +106,7 @@
       owner: root
       group: root
       mode: "0755"
+
 - name: "Создание символической ссылки для генератора JWT"
     file:
       src: "{{slurm_install_prefix}}/bin/slurm-jwt-generator"
@@ -104,8 +114,10 @@
       state: link
       owner: root
       group: root
+
   when: slurm_enable_jwt_auth | default(false)
   tags: [slurmrestd, jwt, auth]
+
 - name: "Настройка TLS/SSL для REST API"
   block:
 - name: "Создание директории для SSL сертификатов"
@@ -115,12 +127,14 @@
       owner: root
       group: "{{slurm_group}}"
       mode: "0750"
+
 - name: "Генерация самоподписанного SSL сертификата"
     command: >
       openssl req -x509 -nodes -days 365 -newkey rsa:4096 -keyout {{slurm_restd_ssl_dir | default('/etc/slurm/ssl')}}/slurmrestd.key -out {{slurm_restd_ssl_dir | default('/etc/slurm/ssl')}}/slurmrestd.crt -subj "/C={{slurm_ssl_country | default('US')}}/ST={{slurm_ssl_state | default('Unknown')}}/L={{slurm_ssl_city | default('Unknown')}}/O={{slurm_ssl_org | default('Slurm Cluster')}}/OU={{slurm_ssl_unit | default('HPC')}}/CN={{slurm_master_node}}"
     args:
       creates: "{{slurm_restd_ssl_dir | default('/etc/slurm/ssl')}}/slurmrestd.crt"
     when: slurm_restd_generate_ssl | default(true)
+
 - name: "Установка прав на SSL файлы"
     file:
       path: "{{item.path}}"
@@ -131,8 +145,10 @@
     - {path: "{{slurm_restd_ssl_dir | default('/etc/slurm/ssl')}}/slurmrestd.key", owner: "{{slurm_restd_user | default('slurmrestd')}}", mode: "0600"}
     - {path: "{{slurm_restd_ssl_dir | default('/etc/slurm/ssl')}}/slurmrestd.crt", owner: "{{slurm_restd_user | default('slurmrestd')}}", mode: "0644"}
     when: slurm_restd_generate_ssl | default(true)
+
   when: slurm_enable_rest_ssl | default(true)
   tags: [slurmrestd, ssl, security]
+
 - name: "Настройка firewall для REST API"
   firewalld:
     port: "{{slurm_slurmrestd_port}}/tcp"
@@ -143,6 +159,7 @@
   - ansible_os_family == "RedHat"
   - slurm_configure_firewall | default(true)
   tags: [slurmrestd, firewall, security]
+
 - name: "Настройка UFW для REST API (Ubuntu/Debian)"
   ufw:
     rule: allow
@@ -153,6 +170,7 @@
   - ansible_os_family == "Debian"
   - slurm_configure_firewall | default(true)
   tags: [slurmrestd, firewall, security]
+
 - name: "Создание скрипта управления REST API"
   copy:
     content: |
@@ -181,6 +199,7 @@
     group: root
     mode: "0755"
   tags: [slurmrestd, scripts]
+
 - name: "Настройка логротации для slurmrestd"
   copy:
     content: |
@@ -195,12 +214,13 @@
           postrotate
               systemctl reload slurmrestd > /dev/null 2>&1 || true
           endscript
-   }
+    }
     dest: /etc/logrotate.d/slurmrestd
     owner: root
     group: root
     mode: "0644"
   tags: [slurmrestd, logging]
+
 - name: "Включение и запуск slurmrestd"
   systemd:
     name: slurmrestd
@@ -209,16 +229,19 @@
     daemon_reload: true
   when: slurm_start_services | default(true)
   tags: [slurmrestd, services]
+
 - name: "Проверка статуса slurmrestd"
   command: systemctl is-active slurmrestd
   register: slurmrestd_status
   changed_when: false
   failed_when: false
   tags: [slurmrestd, validation]
+
 - name: "Отображение статуса slurmrestd"
   debug:
     msg: "Slurmrestd service status: {{slurmrestd_status.stdout}}"
   tags: [slurmrestd, validation]
+
 - name: "Проверка доступности REST API"
   uri:
     url: "{{'https' if slurm_enable_rest_ssl | default(true) else 'http'}}://{{slurm_master_node}}:{{slurm_slurmrestd_port}}/slurm/v0.0.41/ping"
@@ -229,6 +252,7 @@
   failed_when: false
   when: slurm_validate_rest_api | default(true)
   tags: [slurmrestd, validation]
+
 - name: "Отображение результата проверки REST API"
   debug:
     msg: |
@@ -237,27 +261,34 @@
       URL: {{'https' if slurm_enable_rest_ssl | default(true) else 'http'}}://{{slurm_master_node}}:{{slurm_slurmrestd_port}}/slurm/v0.0.41/ping
   when: slurm_validate_rest_api | default(true)
   tags: [slurmrestd, validation]
+
 - name: "Создание примера использования REST API"
   copy:
     content: |
       #!/bin/bash
       # Slurm REST API Examples
+
       BASE_URL="{{'https' if slurm_enable_rest_ssl | default(true) else 'http'}}://{{slurm_master_node}}:{{slurm_slurmrestd_port}}"
+
       echo "=== Slurm REST API Examples ==="
       echo "Base URL: $BASE_URL"
       echo ""
+
       # Ping test
       echo "1. Ping test:"
       echo "curl -k $BASE_URL/slurm/v0.0.41/ping"
       echo ""
+
       # Get cluster info
       echo "2. Cluster info:"
       echo "curl -k $BASE_URL/slurm/v0.0.41/diag"
       echo ""
+
       # Get jobs
       echo "3. List jobs:"
       echo "curl -k $BASE_URL/slurm/v0.0.41/jobs"
       echo ""
+
       # Get nodes
       echo "4. List nodes:"
       echo "curl -k $BASE_URL/slurm/v0.0.41/nodes"

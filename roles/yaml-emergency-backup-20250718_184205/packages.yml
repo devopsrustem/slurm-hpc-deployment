@@ -5,14 +5,14 @@
 
 - name: "Обновление кэша пакетов"
   apt:
-    update_cache: yes
+    update_cache: true
     cache_valid_time: 3600
   tags:
   - packages
 
 - name: "Установка пакетов для Ubuntu 24.04"
   package:
-    name: "{{ item }}"
+    name: "{{item}}"
     state: present
   loop:
   - libhttpparser-dev
@@ -32,7 +32,7 @@
     - python3-mysqldb
     - python3-pymysql
     state: present
-    install_recommends: no
+    install_recommends: false
   tags:
   - packages
   - mysql
@@ -44,7 +44,7 @@
     - libmunge-dev
     - libmunge2
     state: present
-    install_recommends: no
+    install_recommends: false
   tags:
   - packages
   - munge
@@ -57,7 +57,7 @@
     - libjson-c-dev
     - libjson-c5
     state: present
-    install_recommends: no
+    install_recommends: false
   tags:
   - packages
   - jwt
@@ -94,7 +94,7 @@
     - chrony
     - logrotate
     state: present
-    install_recommends: no
+    install_recommends: false
   tags:
   - packages
   - libraries
@@ -114,7 +114,7 @@
     - rpm2cpio
     - alien
     state: present
-    install_recommends: no
+    install_recommends: false
   tags:
   - packages
   - tools
@@ -153,7 +153,7 @@
   - validation
 
 - name: "Проверка доступности команд"
-  command: "which {{ item }}"
+  command: "which {{item}}"
   register: command_check
   failed_when: command_check.rc != 0
   changed_when: false
@@ -186,3 +186,29 @@
   tags:
   - packages
   - info
+
+# =============================================================================
+# UBUNTU 24.04 SPECIFIC PACKAGE INSTALLATION
+# =============================================================================
+
+- name: "Установка пакетов для Ubuntu 24.04+"
+  package:
+    name: "{{slurm_packages_ubuntu_24_04}}"
+    state: present
+    update_cache: true
+  when:
+    - ansible_os_family == "Debian"
+    - ansible_distribution == "Ubuntu"
+    - ansible_distribution_version is version('24.04', '>=')
+  tags: [packages, ubuntu, ubuntu-24.04]
+
+- name: "Установка пакетов для Ubuntu < 24.04"
+  package:
+    name: "{{slurm_packages_ubuntu_default}}"
+    state: present
+    update_cache: true
+  when:
+    - ansible_os_family == "Debian"
+    - ansible_distribution == "Ubuntu"
+    - ansible_distribution_version is version('24.04', '<')
+  tags: [packages, ubuntu, ubuntu-legacy]

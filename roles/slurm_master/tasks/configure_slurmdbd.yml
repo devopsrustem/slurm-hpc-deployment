@@ -2,20 +2,18 @@
 # =============================================================================
 # НАСТРОЙКА SLURM DATABASE DAEMON (SLURMDBD)
 # =============================================================================
-
 - name: "Создание конфигурационного файла slurmdbd.conf"
   template:
     src: slurmdbd.conf.j2
     dest: /etc/slurm/slurmdbd.conf
-    owner: "{{ slurm_user }}"
-    group: "{{ slurm_group }}"
+    owner: "{{slurm_user}}"
+    group: "{{slurm_group}}"
     mode: '0600'
-    backup: yes
+    backup: true
   notify: restart slurmdbd
   tags:
   - slurmdbd
   - config
-
 - name: "Создание systemd unit файла для slurmdbd"
   template:
     src: slurmdbd.service.j2
@@ -23,14 +21,13 @@
     owner: root
     group: root
     mode: '0644'
-    backup: yes
+    backup: true
   notify:
   - reload systemd
   - restart slurmdbd
   tags:
   - slurmdbd
   - systemd
-
 - name: "Создание директории для environment файлов"
   file:
     path: /etc/systemd/system/slurmdbd.service.d
@@ -41,7 +38,6 @@
   tags:
   - slurmdbd
   - systemd
-
 - name: "Создание environment файла для slurmdbd"
   copy:
     dest: /etc/systemd/system/slurmdbd.service.d/environment.conf
@@ -59,16 +55,14 @@
   tags:
   - slurmdbd
   - systemd
-
 - name: "Перезагрузка systemd daemon"
   systemd:
-    daemon_reload: yes
+    daemon_reload: true
   tags:
   - slurmdbd
   - systemd
-
 - name: "Проверка синтаксиса конфигурации slurmdbd"
-  command: "{{ slurm_prefix }}/sbin/slurmdbd -D -v"
+  command: "{{slurm_prefix}}/sbin/slurmdbd -D -v"
   register: slurmdbd_syntax_check
   failed_when:
   - slurmdbd_syntax_check.rc != 0
@@ -77,49 +71,45 @@
   tags:
   - slurmdbd
   - validation
-
 - name: "Создание логротейт конфигурации для slurmdbd"
   copy:
     dest: /etc/logrotate.d/slurmdbd
     content: |
-      {{ slurm_log_dir }}/slurmdbd.log {
+      {{slurm_log_dir}}/slurmdbd.log {
           daily
           missingok
           rotate 14
           compress
           delaycompress
           notifempty
-          create 0640 {{ slurm_user }} {{ slurm_group }}
+          create 0640 {{slurm_user}} {{slurm_group}}
           postrotate
               /bin/systemctl reload slurmdbd 2>/dev/null || true
           endscript
-      }
+   }
     owner: root
     group: root
     mode: '0644'
   tags:
   - slurmdbd
   - logging
-
 - name: "Запуск и включение slurmdbd сервиса"
   systemd:
     name: slurmdbd
     state: started
-    enabled: yes
-    daemon_reload: yes
+    enabled: true
+    daemon_reload: true
   tags:
   - slurmdbd
   - services
-
 - name: "Ожидание запуска slurmdbd"
   wait_for:
-    path: "{{ slurm_run_dir }}/slurmdbd.pid"
+    path: "{{slurm_run_dir}}/slurmdbd.pid"
     timeout: 60
     delay: 5
   tags:
   - slurmdbd
   - services
-
 - name: "Проверка статуса slurmdbd"
   systemd:
     name: slurmdbd
@@ -127,20 +117,18 @@
   tags:
   - slurmdbd
   - validation
-
 - name: "Проверка подключения slurmdbd к базе данных"
   shell: |
-    {{ slurm_prefix }}/bin/sacctmgr -i list cluster
+    {{slurm_prefix}}/bin/sacctmgr -i list cluster
   register: slurmdbd_db_check
   failed_when: false
   changed_when: false
   tags:
   - slurmdbd
   - validation
-
 - name: "Создание кластера в базе данных (если не существует)"
   shell: |
-    {{ slurm_prefix }}/bin/sacctmgr -i add cluster {{ slurmctld_options.cluster_name }}
+    {{slurm_prefix}}/bin/sacctmgr -i add cluster {{slurmctld_options.cluster_name}}
   register: cluster_creation
   failed_when:
   - cluster_creation.rc != 0
@@ -150,10 +138,9 @@
   - slurmdbd
   - cluster
   - init
-
 - name: "Создание дефолтного аккаунта"
   shell: |
-    {{ slurm_prefix }}/bin/sacctmgr -i add account name=default Description="Default Account" Organization=HPC
+    {{slurm_prefix}}/bin/sacctmgr -i add account name=default Description="Default Account" Organization=HPC
   register: account_creation
   failed_when:
   - account_creation.rc != 0
@@ -163,10 +150,9 @@
   - slurmdbd
   - accounts
   - init
-
 - name: "Добавление аккаунта к кластеру"
   shell: |
-    {{ slurm_prefix }}/bin/sacctmgr -i add account default Cluster={{ slurmctld_options.cluster_name }}
+    {{slurm_prefix}}/bin/sacctmgr -i add account default Cluster={{slurmctld_options.cluster_name}}
   register: account_cluster_assoc
   failed_when:
   - account_cluster_assoc.rc != 0
@@ -176,11 +162,10 @@
   - slurmdbd
   - accounts
   - init
-
 - name: "Проверка логов slurmdbd на ошибки"
   shell: |
-    if [ -f {{ slurm_log_dir }}/slurmdbd.log ]; then
-        tail -50 {{ slurm_log_dir }}/slurmdbd.log | grep -i "error\|fatal\|fail" | head -10 || echo "No errors found"
+    if [-f {{slurm_log_dir}}/slurmdbd.log]; then
+        tail -50 {{slurm_log_dir}}/slurmdbd.log | grep -i "error\|fatal\|fail" | head -10 || echo "No errors found"
     else
         echo "Log file not found"
     fi
@@ -189,25 +174,23 @@
   tags:
   - slurmdbd
   - validation
-
 - name: "Отображение статуса slurmdbd"
   debug:
     msg:
     - "✅ slurmdbd настроен и запущен"
-    - "📊 База данных: {{ database_name }} на {{ database_host }}"
+    - "📊 База данных: {{database_name}} на {{database_host}}"
     - "📁 Конфигурация: /etc/slurm/slurmdbd.conf"
-    - "📝 Логи: {{ slurm_log_dir }}/slurmdbd.log"
-    - "🔄 Статус сервиса: {{ slurmdbd_status.status.ActiveState }}"
-    - "🏗️ Кластер создан: {{ slurmctld_options.cluster_name }}"
+    - "📝 Логи: {{slurm_log_dir}}/slurmdbd.log"
+    - "🔄 Статус сервиса: {{slurmdbd_status.status.ActiveState}}"
+    - "🏗️ Кластер создан: {{slurmctld_options.cluster_name}}"
   tags:
   - slurmdbd
   - info
-
 - name: "Отображение информации о проверках"
   debug:
     msg:
-    - "🔍 Проверка подключения к БД: {{ 'OK' if slurmdbd_db_check.rc == 0 else 'FAILED' }}"
-    - "📋 Логи: {{ slurmdbd_log_check.stdout_lines | default(['Нет ошибок']) }}"
+    - "🔍 Проверка подключения к БД: {{'OK' if slurmdbd_db_check.rc == 0 else 'FAILED'}}"
+    - "📋 Логи: {{slurmdbd_log_check.stdout_lines | default(['Нет ошибок'])}}"
   tags:
   - slurmdbd
   - info

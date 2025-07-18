@@ -7,10 +7,10 @@
   template:
     src: slurm.conf.j2
     dest: /etc/slurm/slurm.conf
-    owner: "{{ slurm_user }}"
-    group: "{{ slurm_group }}"
+    owner: "{{slurm_user}}"
+    group: "{{slurm_group}}"
     mode: '0644'
-    backup: yes
+    backup: true
   notify: restart slurmctld
   tags:
     - slurmctld
@@ -20,10 +20,10 @@
   template:
     src: cgroup.conf.j2
     dest: /etc/slurm/cgroup.conf
-    owner: "{{ slurm_user }}"
-    group: "{{ slurm_group }}"
+    owner: "{{slurm_user}}"
+    group: "{{slurm_group}}"
     mode: '0644'
-    backup: yes
+    backup: true
   notify: restart slurmctld
   tags:
     - slurmctld
@@ -36,7 +36,7 @@
     content: |
       # Allowed devices for Slurm cgroups
       # Device access control for jobs
-      
+
       # Basic devices
       /dev/null rwm
       /dev/zero rwm
@@ -47,22 +47,22 @@
       /dev/ptmx rwm
       /dev/tty rwm
       /dev/console rwm
-      
+
       # GPU devices (NVIDIA)
       /dev/nvidia* rwm
       /dev/nvidiactl rwm
       /dev/nvidia-uvm rwm
       /dev/nvidia-uvm-tools rwm
       /dev/nvidia-modeset rwm
-      
+
       # InfiniBand devices
       /dev/infiniband/* rwm
       /dev/rdma_cm rwm
-      
+
       # Additional devices as needed
       # Add custom device access rules here
-    owner: "{{ slurm_user }}"
-    group: "{{ slurm_group }}"
+    owner: "{{slurm_user}}"
+    group: "{{slurm_group}}"
     mode: '0644'
   tags:
     - slurmctld
@@ -73,10 +73,10 @@
   template:
     src: gres.conf.j2
     dest: /etc/slurm/gres.conf
-    owner: "{{ slurm_user }}"
-    group: "{{ slurm_group }}"
+    owner: "{{slurm_user}}"
+    group: "{{slurm_group}}"
     mode: '0644'
-    backup: yes
+    backup: true
   notify: restart slurmctld
   tags:
     - slurmctld
@@ -90,7 +90,7 @@
     owner: root
     group: root
     mode: '0644'
-    backup: yes
+    backup: true
   notify:
     - reload systemd
     - restart slurmctld
@@ -116,7 +116,7 @@
     - systemd
 
 - name: "Проверка синтаксиса конфигурации slurm.conf"
-  command: "{{ slurm_prefix }}/sbin/slurmctld -D -v"
+  command: "{{slurm_prefix}}/sbin/slurmctld -D -v"
   register: slurmctld_syntax_check
   failed_when:
     - slurmctld_syntax_check.rc != 0
@@ -133,7 +133,7 @@
     owner: root
     group: root
     mode: '0755'
-    backup: yes
+    backup: true
   tags:
     - slurmctld
     - prolog
@@ -146,7 +146,7 @@
     owner: root
     group: root
     mode: '0755'
-    backup: yes
+    backup: true
   tags:
     - slurmctld
     - epilog
@@ -156,31 +156,31 @@
   copy:
     dest: /etc/logrotate.d/slurmctld
     content: |
-      {{ slurm_log_dir }}/slurmctld.log {
+      {{slurm_log_dir}}/slurmctld.log {
           daily
           missingok
           rotate 14
           compress
           delaycompress
           notifempty
-          create 0640 {{ slurm_user }} {{ slurm_group }}
+          create 0640 {{slurm_user}} {{slurm_group}}
           postrotate
               /bin/systemctl reload slurmctld 2>/dev/null || true
           endscript
-      }
-      
-      {{ slurm_log_dir }}/sched.log {
+    }
+
+      {{slurm_log_dir}}/sched.log {
           daily
           missingok
           rotate 7
           compress
           delaycompress
           notifempty
-          create 0640 {{ slurm_user }} {{ slurm_group }}
+          create 0640 {{slurm_user}} {{slurm_group}}
           postrotate
               /bin/systemctl reload slurmctld 2>/dev/null || true
           endscript
-      }
+    }
     owner: root
     group: root
     mode: '0644'
@@ -190,7 +190,7 @@
 
 - name: "Перезагрузка systemd daemon"
   systemd:
-    daemon_reload: yes
+    daemon_reload: true
   tags:
     - slurmctld
     - systemd
@@ -199,15 +199,15 @@
   systemd:
     name: slurmctld
     state: started
-    enabled: yes
-    daemon_reload: yes
+    enabled: true
+    daemon_reload: true
   tags:
     - slurmctld
     - services
 
 - name: "Ожидание запуска slurmctld"
   wait_for:
-    path: "{{ slurm_run_dir }}/slurmctld.pid"
+    path: "{{slurm_run_dir}}/slurmctld.pid"
     timeout: 120
     delay: 5
   tags:
@@ -223,22 +223,22 @@
     - validation
 
 - name: "Проверка работы команд Slurm"
-  command: "{{ item }}"
+  command: "{{item}}"
   register: slurm_commands_check
   failed_when: false
   changed_when: false
   loop:
-    - "{{ slurm_prefix }}/bin/scontrol ping"
-    - "{{ slurm_prefix }}/bin/sinfo"
-    - "{{ slurm_prefix }}/bin/squeue"
+    - "{{slurm_prefix}}/bin/scontrol ping"
+    - "{{slurm_prefix}}/bin/sinfo"
+    - "{{slurm_prefix}}/bin/squeue"
   tags:
     - slurmctld
     - validation
 
 - name: "Проверка логов slurmctld на ошибки"
   shell: |
-    if [ -f {{ slurm_log_dir }}/slurmctld.log ]; then
-        tail -50 {{ slurm_log_dir }}/slurmctld.log | grep -i "error\|fatal\|fail" | head -10 || echo "No errors found"
+    if [-f {{slurm_log_dir}}/slurmctld.log]; then
+        tail -50 {{slurm_log_dir}}/slurmctld.log | grep -i "error\|fatal\|fail" | head -10 || echo "No errors found"
     else
         echo "Log file not found"
     fi
@@ -253,10 +253,10 @@
     msg:
       - "✅ slurmctld настроен и запущен"
       - "📁 Конфигурация: /etc/slurm/slurm.conf"
-      - "📝 Логи: {{ slurm_log_dir }}/slurmctld.log"
-      - "🔄 Статус сервиса: {{ slurmctld_status.status.ActiveState }}"
-      - "🏗️ Кластер: {{ slurmctld_options.cluster_name }}"
-      - "🔍 Команды работают: {{ slurm_commands_check.results | selectattr('rc', 'equalto', 0) | list | length }}/{{ slurm_commands_check.results | length }}"
+      - "📝 Логи: {{slurm_log_dir}}/slurmctld.log"
+      - "🔄 Статус сервиса: {{slurmctld_status.status.ActiveState}}"
+      - "🏗️ Кластер: {{slurmctld_options.cluster_name}}"
+      - "🔍 Команды работают: {{slurm_commands_check.results | selectattr('rc', 'equalto', 0) | list | length}}/{{slurm_commands_check.results | length}}"
   tags:
     - slurmctld
     - info
@@ -266,9 +266,9 @@
     msg:
       - "📋 Проверки команд:"
 {% for result in slurm_commands_check.results %}
-      - "  {{ result.cmd[0] | basename }}: {{ 'OK' if result.rc == 0 else 'FAILED' }}"
+      - "  {{result.cmd[0] | basename}}: {{'OK' if result.rc == 0 else 'FAILED'}}"
 {% endfor %}
-      - "📋 Логи: {{ slurmctld_log_check.stdout_lines | default(['Нет ошибок']) }}"
+      - "📋 Логи: {{slurmctld_log_check.stdout_lines | default(['Нет ошибок'])}}"
   tags:
     - slurmctld
     - info

@@ -1,0 +1,38 @@
+---
+# =============================================================================
+# SLURM HPC DEPLOYMENT - MAIN SITE PLAYBOOK
+# =============================================================================
+
+- name: "Deploy Slurm HPC Cluster"
+  hosts: slurm_cluster
+  gather_facts: true
+  become: true
+
+  pre_tasks:
+  - name: "Update package cache"
+    package:
+      update_cache: true
+    when: ansible_os_family == "Debian"
+
+  roles:
+  - role: common
+    when: slurm_deploy_common | default(true)
+
+  - role: slurm_master
+    when: inventory_hostname in groups['slurm_master']
+
+  - role: slurm_compute
+    when: inventory_hostname in groups['slurm_compute']
+
+  - role: slurm_login
+    when: inventory_hostname in groups['slurm_login']
+
+  post_tasks:
+  - name: "Display deployment summary"
+    debug:
+      msg: |
+        Slurm HPC deployment completed!
+        Master nodes: {{ groups['slurm_master'] | default([]) }}
+        Compute nodes: {{ groups['slurm_compute'] | default([]) }}
+        Login nodes: {{ groups['slurm_login'] | default([]) }}
+    run_once: true

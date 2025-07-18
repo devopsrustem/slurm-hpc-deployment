@@ -7,8 +7,8 @@
   systemd:
     name: mysql
     state: started
-    enabled: yes
-    daemon_reload: yes
+    enabled: true
+    daemon_reload: true
   tags:
   - mysql
   - services
@@ -16,7 +16,7 @@
 - name: "Ожидание готовности MySQL"
   wait_for:
     port: 3306
-    host: "{{ database_host }}"
+    host: "{{database_host}}"
     timeout: 60
     delay: 10
   tags:
@@ -34,7 +34,7 @@
 - name: "Настройка root пароля MySQL (при первой установке)"
   mysql_user:
     name: root
-    password: "{{ mysql_root_password }}"
+    password: "{{mysql_root_password}}"
     login_unix_socket: /var/run/mysqld/mysqld.sock
     state: present
   ignore_errors: yes # Может быть уже настроен
@@ -49,7 +49,7 @@
     owner: root
     group: root
     mode: '0600'
-    backup: yes
+    backup: true
   tags:
   - mysql
   - config
@@ -57,11 +57,11 @@
 - name: "Удаление анонимных пользователей MySQL"
   mysql_user:
     name: ''
-    host_all: yes
+    host_all: true
     state: absent
     login_user: root
-    login_password: "{{ mysql_root_password }}"
-  ignore_errors: yes
+    login_password: "{{mysql_root_password}}"
+  ignore_errors: true
   tags:
   - mysql
   - security
@@ -71,8 +71,8 @@
     name: test
     state: absent
     login_user: root
-    login_password: "{{ mysql_root_password }}"
-  ignore_errors: yes
+    login_password: "{{mysql_root_password}}"
+  ignore_errors: true
   tags:
   - mysql
   - security
@@ -80,15 +80,15 @@
 - name: "Создание конфигурации MySQL для Slurm"
   blockinfile:
     path: /etc/mysql/mysql.conf.d/slurm.cnf
-    create: yes
-    backup: yes
+    create: true
+    backup: true
     block: |
       # MySQL configuration for Slurm accounting
       [mysqld]
 
       # Performance tuning for Slurm
-      innodb_buffer_pool_size = {{ mysql_innodb_buffer_pool_size }}
-      innodb_log_file_size = {{ mysql_innodb_log_file_size }}
+      innodb_buffer_pool_size = {{mysql_innodb_buffer_pool_size}}
+      innodb_log_file_size = {{mysql_innodb_log_file_size}}
       innodb_flush_log_at_trx_commit = 2
       innodb_file_per_table = 1
 
@@ -133,7 +133,7 @@
 - name: "Ожидание готовности MySQL после перезапуска"
   wait_for:
     port: 3306
-    host: "{{ database_host }}"
+    host: "{{database_host}}"
     timeout: 60
     delay: 5
   tags:
@@ -141,29 +141,29 @@
 
 - name: "Создание базы данных для Slurm accounting"
   mysql_db:
-    name: "{{ database_name }}"
+    name: "{{database_name}}"
     state: present
     encoding: utf8mb4
     collation: utf8mb4_unicode_ci
     login_user: root
-    login_password: "{{ mysql_root_password }}"
+    login_password: "{{mysql_root_password}}"
   tags:
   - mysql
   - database
 
 - name: "Создание пользователя базы данных для Slurm"
   mysql_user:
-    name: "{{ database_user }}"
-    password: "{{ database_password }}"
-    priv: "{{ database_name }}.*:ALL"
-    host: "{{ item }}"
+    name: "{{database_user}}"
+    password: "{{database_password}}"
+    priv: "{{database_name}}.*:ALL"
+    host: "{{item}}"
     state: present
     login_user: root
-    login_password: "{{ mysql_root_password }}"
+    login_password: "{{mysql_root_password}}"
   loop:
   - localhost
-  - "{{ inventory_hostname }}"
-  - "{{ ansible_default_ipv4.address }}"
+  - "{{inventory_hostname}}"
+  - "{{ansible_default_ipv4.address}}"
   tags:
   - mysql
   - database
@@ -171,12 +171,12 @@
 
 - name: "Предоставление дополнительных прав пользователю Slurm"
   mysql_user:
-    name: "{{ database_user }}"
+    name: "{{database_user}}"
     priv: "information_schema.*:SELECT"
-    append_privs: yes
+    append_privs: true
     host: localhost
     login_user: root
-    login_password: "{{ mysql_root_password }}"
+    login_password: "{{mysql_root_password}}"
   tags:
   - mysql
   - database
@@ -210,19 +210,19 @@
 
 - name: "Проверка соединения с базой данных"
   mysql_db:
-    name: "{{ database_name }}"
+    name: "{{database_name}}"
     state: present
-    login_user: "{{ database_user }}"
-    login_password: "{{ database_password }}"
-    login_host: "{{ database_host }}"
+    login_user: "{{database_user}}"
+    login_password: "{{database_password}}"
+    login_host: "{{database_host}}"
   tags:
   - mysql
   - validation
 
 - name: "Тестирование производительности MySQL"
   shell: |
-    mysql -u{{ database_user }} -p{{ database_password }} -h{{ database_host }} {{ database_name }} -e "
-    SELECT 
+    mysql -u{{database_user}} -p{{database_password}} -h{{database_host}} {{database_name}} -e "
+    SELECT
         @@version as mysql_version,
         @@innodb_buffer_pool_size as buffer_pool_size,
         @@max_connections as max_connections,
@@ -254,10 +254,10 @@
   debug:
     msg:
     - "✅ MySQL сервер запущен и настроен"
-    - "📊 База данных: {{ database_name }}"
-    - "👤 Пользователь: {{ database_user }}"
+    - "📊 База данных: {{database_name}}"
+    - "👤 Пользователь: {{database_user}}"
     - "🔧 Конфигурация оптимизирована для Slurm"
-    - "💾 Резервное копирование: {{ 'включено' if backup_enabled else 'отключено' }}"
+    - "💾 Резервное копирование: {{'включено' if backup_enabled else 'отключено'}}"
   tags:
   - mysql
   - info

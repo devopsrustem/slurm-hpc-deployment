@@ -10,6 +10,18 @@
   tags:
   - packages
 
+- name: "Установка пакетов для Ubuntu 24.04"
+  package:
+    name: "{{ item }}"
+    state: present
+  loop:
+  - libhttpparser-dev
+  - python3.12-dev
+  - python3.12-pip
+  when:
+  - ansible_os_family == "Debian"
+  - ansible_distribution_version is version('24.04', '>=')
+
 - name: "Установка MySQL Server и клиента"
   apt:
     name:
@@ -61,7 +73,7 @@
     - libncurses5-dev
     - libevent-dev
     - libcurl4-openssl-dev
-    - libhttp-parser-dev
+    - libhttpparser-dev
     - libyaml-dev
 
     # HWLOC для топологии
@@ -174,3 +186,29 @@
   tags:
   - packages
   - info
+
+# =============================================================================
+# UBUNTU 24.04 SPECIFIC PACKAGE INSTALLATION
+# =============================================================================
+
+- name: "Установка пакетов для Ubuntu 24.04+"
+  package:
+    name: "{{ slurm_packages_ubuntu_24_04 }}"
+    state: present
+    update_cache: yes
+  when: 
+    - ansible_os_family == "Debian"
+    - ansible_distribution == "Ubuntu"
+    - ansible_distribution_version is version('24.04', '>=')
+  tags: [packages, ubuntu, ubuntu-24.04]
+
+- name: "Установка пакетов для Ubuntu < 24.04"
+  package:
+    name: "{{ slurm_packages_ubuntu_default }}"
+    state: present
+    update_cache: yes
+  when: 
+    - ansible_os_family == "Debian"
+    - ansible_distribution == "Ubuntu"
+    - ansible_distribution_version is version('24.04', '<')
+  tags: [packages, ubuntu, ubuntu-legacy]

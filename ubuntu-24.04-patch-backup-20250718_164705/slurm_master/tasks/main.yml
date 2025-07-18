@@ -1,11 +1,4 @@
 ---
-- name: "Загрузка переменных для Ubuntu 24.04"
-  include_vars: "ubuntu-24.04.yml"
-  when: 
-    - ansible_distribution == "Ubuntu"
-    - ansible_distribution_version is version("24.04", ">=")
-  tags: [always]
-
 # =============================================================================
 # ОСНОВНЫЕ ЗАДАЧИ РОЛИ SLURM_MASTER
 # =============================================================================

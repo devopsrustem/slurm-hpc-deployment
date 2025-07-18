@@ -1,0 +1,48 @@
+---
+# Ubuntu 24.04 LTS specific variables
+
+# System packages
+system_packages_24_04:
+  - systemd
+  - cgroup-tools
+  - cgroupfs-mount
+
+# Python packages  
+python_packages_24_04:
+  - python3.12-full
+  - python3.12-dev
+  - python3.12-pip
+  - python3.12-venv
+  - python3.12-setuptools
+  - python3.12-wheel
+
+# Compiler and build tools
+build_packages_24_04:
+  - gcc-13
+  - g++-13
+  - make
+  - cmake
+  - pkg-config
+
+# SSL and crypto
+ssl_packages_24_04:
+  - libssl3
+  - libssl-dev
+  - openssl
+
+# Database
+database_packages_24_04:
+  - mariadb-server
+  - mariadb-client
+  - libmariadb-dev
+
+# Systemd service defaults for Ubuntu 24.04
+systemd_defaults_24_04:
+  ProtectSystem: "strict"
+  ProtectHome: "yes"
+  PrivateTmp: "yes"
+  NoNewPrivileges: "yes"
+  LockPersonality: "yes"
+  RestrictRealtime: "yes"
+  SystemCallArchitectures: "native"
+  MemoryDenyWriteExecute: "yes"

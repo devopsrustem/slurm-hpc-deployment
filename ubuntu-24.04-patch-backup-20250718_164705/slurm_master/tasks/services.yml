@@ -1,0 +1,339 @@
+# =============================================================================
+# УПРАВЛЕНИЕ SLURM СЕРВИСАМИ
+# =============================================================================
+
+- name: "Перезагрузка systemd daemon"
+  systemd:
+    daemon_reload: yes
+  tags: [ services, systemd ]
+
+- name: "Проверка статуса MUNGE перед запуском Slurm сервисов"
+  systemd:
+    name: munge
+    state: started
+    enabled: yes
+  tags: [ services, munge, dependencies ]
+
+- name: "Ожидание готовности MUNGE"
+  wait_for:
+    path: /var/run/munge/munge.socket.2
+    timeout: 30
+  ignore_errors: true
+  tags: [ services, munge, dependencies ]
+
+- name: "Проверка доступности MySQL для slurmdbd"
+  wait_for:
+    host: "{{ slurm_db_host | default('localhost') }}"
+    port: "{{ slurm_db_port | default(3306) }}"
+    timeout: 30
+  when: slurm_enable_slurmdbd | default(true)
+  tags: [ services, mysql, dependencies ]
+
+- name: "Запуск и включение slurmdbd"
+  systemd:
+    name: slurmdbd
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  when: slurm_enable_slurmdbd | default(true)
+  register: slurmdbd_service
+  tags: [ services, slurmdbd ]
+
+- name: "Ожидание готовности slurmdbd"
+  wait_for:
+    host: "{{ slurm_master_address }}"
+    port: "{{ slurm_slurmdbd_port }}"
+    timeout: 60
+  when:
+  - slurm_enable_slurmdbd | default(true)
+  - slurmdbd_service is changed
+  tags: [ services, slurmdbd, dependencies ]
+
+- name: "Проверка подключения к slurmdbd"
+  command: >
+    {{ slurm_install_prefix }}/bin/sacctmgr  -i list cluster {{ slurm_cluster_name }}
+  register: slurmdbd_test
+  failed_when: false
+  changed_when: false
+  when: slurm_enable_slurmdbd | default(true)
+  tags: [ services, slurmdbd, validation ]
+
+- name: "Отображение статуса подключения к slurmdbd"
+  debug:
+    msg: |
+      Slurmdbd connection test:
+      Return code: {{ slurmdbd_test.rc | default('N/A') }}
+      Output: {{ slurmdbd_test.stdout | default('N/A') }}
+      Error: {{ slurmdbd_test.stderr | default('N/A') }}
+  when: slurm_enable_slurmdbd | default(true)
+  tags: [ services, slurmdbd, validation ]
+
+- name: "Запуск и включение slurmctld"
+  systemd:
+    name: slurmctld
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  register: slurmctld_service
+  tags: [ services, slurmctld ]
+
+- name: "Ожидание готовности slurmctld"
+  wait_for:
+    host: "{{ slurm_master_address }}"
+    port: "{{ slurm_slurmctld_port }}"
+    timeout: 120
+  when: slurmctld_service is changed
+  tags: [ services, slurmctld, dependencies ]
+
+- name: "Проверка статуса slurmctld"
+  command: "{{ slurm_install_prefix }}/bin/sinfo"
+  register: slurmctld_test
+  failed_when: false
+  changed_when: false
+  tags: [ services, slurmctld, validation ]
+
+- name: "Отображение статуса кластера"
+  debug:
+    msg: |
+      Cluster status (sinfo):
+      Return code: {{ slurmctld_test.rc | default('N/A') }}
+      Output: {{ slurmctld_test.stdout_lines | default(['N/A']) | join('\n') }}
+      Error: {{ slurmctld_test.stderr | default('N/A') }}
+  tags: [ services, slurmctld, validation ]
+
+- name: "Запуск и включение slurmrestd"
+  systemd:
+    name: slurmrestd
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  when: slurm_enable_rest_api | default(false)
+  register: slurmrestd_service
+  tags: [ services, slurmrestd ]
+
+- name: "Ожидание готовности slurmrestd"
+  wait_for:
+    host: "{{ slurm_master_address }}"
+    port: "{{ slurm_slurmrestd_port }}"
+    timeout: 60
+  when:
+  - slurm_enable_rest_api | default(false)
+  - slurmrestd_service is changed
+  tags: [ services, slurmrestd, dependencies ]
+
+- name: "Проверка REST API"
+  uri:
+    url: "{{ 'https' if slurm_enable_rest_ssl | default(true) else 'http' }}://{{ slurm_master_address }}:{{ slurm_slurmrestd_port }}/slurm/v0.0.41/ping"
+    method: GET
+    validate_certs: no
+    timeout: 10
+  register: rest_api_test
+  failed_when: false
+  when: slurm_enable_rest_api | default(false)
+  tags: [ services, slurmrestd, validation ]
+
+- name: "Отображение статуса REST API"
+  debug:
+    msg: |
+      REST API status:
+      Status code: {{ rest_api_test.status | default('N/A') }}
+      Response: {{ rest_api_test.json | default('N/A') }}
+  when: slurm_enable_rest_api | default(false)
+  tags: [ services, slurmrestd, validation ]
+
+- name: "Создание скрипта управления сервисами Slurm"
+  template:
+    src: slurm-services.sh.j2
+    dest: "{{ slurm_install_prefix }}/bin/slurm-services"
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [ services, scripts ]
+
+- name: "Создание службы мониторинга Slurm"
+  template:
+    src: slurm-monitor.service.j2
+    dest: /etc/systemd/system/slurm-monitor.service
+    owner: root
+    group: root
+    mode: "0644"
+  when: slurm_enable_monitoring | default(false)
+  notify:
+  - reload systemd
+  tags: [ services, monitoring ]
+
+- name: "Запуск службы мониторинга"
+  systemd:
+    name: slurm-monitor
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  when:
+  - slurm_enable_monitoring | default(false)
+  - slurm_start_services | default(true)
+  tags: [ services, monitoring ]
+
+- name: "Создание таймера для регулярных проверок"
+  template:
+    src: slurm-health-check.timer.j2
+    dest: /etc/systemd/system/slurm-health-check.timer
+    owner: root
+    group: root
+    mode: "0644"
+  when: slurm_enable_health_checks | default(true)
+  notify:
+  - reload systemd
+  tags: [ services, health-checks ]
+
+- name: "Создание службы проверки здоровья"
+  template:
+    src: slurm-health-check.service.j2
+    dest: /etc/systemd/system/slurm-health-check.service
+    owner: root
+    group: root
+    mode: "0644"
+  when: slurm_enable_health_checks | default(true)
+  notify:
+  - reload systemd
+  tags: [ services, health-checks ]
+
+- name: "Запуск таймера проверки здоровья"
+  systemd:
+    name: slurm-health-check.timer
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  when:
+  - slurm_enable_health_checks | default(true)
+  - slurm_start_services | default(true)
+  tags: [ services, health-checks ]
+
+- name: "Создание директорий для override файлов"
+  file:
+    path: "/etc/systemd/system/{{ item }}.service.d"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+  - slurmctld
+  - slurmdbd
+  - slurmrestd
+  when: slurm_auto_restart_services | default(true)
+  tags: [ services, auto-restart ]
+
+- name: "Настройка автоматического перезапуска сервисов"
+  ini_file:
+    path: "/etc/systemd/system/{{ item.0 }}.service.d/override.conf"
+    section: Service
+    option: "{{ item.1.key }}"
+    value: "{{ item.1.value }}"
+    create: yes
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ services | product(restart_options) | list }}"
+  vars:
+    services:
+    - slurmctld
+    - slurmdbd
+    - slurmrestd
+    restart_options:
+    - { key: "Restart", value: "on-failure" }
+    - { key: "RestartSec", value: "10s" }
+    - { key: "StartLimitInterval", value: "10min" }
+    - { key: "StartLimitBurst", value: "3" }
+  when: slurm_auto_restart_services | default(true)
+  notify:
+  - reload systemd
+  tags: [ services, auto-restart ]
+
+- name: "Создание скрипта резервного копирования состояния сервисов"
+  template:
+    src: backup-slurm-state.sh.j2
+    dest: "{{ slurm_install_prefix }}/bin/backup-slurm-state"
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [ services, backup ]
+
+- name: "Настройка cron задачи для резервного копирования"
+  cron:
+    name: "Backup Slurm state"
+    minute: "{{ slurm_backup_minute | default('0') }}"
+    hour: "{{ slurm_backup_hour | default('2') }}"
+    day: "{{ slurm_backup_day | default('*') }}"
+    month: "{{ slurm_backup_month | default('*') }}"
+    weekday: "{{ slurm_backup_weekday | default('*') }}"
+    user: root
+    job: "{{ slurm_install_prefix }}/bin/backup-slurm-state"
+    state: "{{ 'present' if slurm_enable_backup | default(true) else 'absent' }}"
+  tags: [ services, backup, cron ]
+
+- name: "Финальная проверка всех сервисов"
+  systemd:
+    name: "{{ item }}"
+  register: service_status
+  failed_when: false
+  loop:
+  - munge
+  - "{{ 'slurmdbd' if slurm_enable_slurmdbd | default(true) else omit }}"
+  - slurmctld
+  - "{{ 'slurmrestd' if slurm_enable_rest_api | default(false) else omit }}"
+  when: item != omit
+  tags: [ services, validation ]
+
+- name: "Отображение статуса всех сервисов"
+  debug:
+    msg: |
+      Service status summary:
+      {% for result in service_status.results %}
+      {% if result.item != omit %}
+      {{ result.item }}: {{ result.status.ActiveState | default('unknown') }}
+      {% endif %}
+      {% endfor %}
+  tags: [ services, validation ]
+
+- name: "Создание файла статуса кластера"
+  template:
+    src: cluster-status.j2
+    dest: "{{ slurm_config_dir }}/cluster-status.txt"
+    owner: "{{ slurm_user }}"
+    group: "{{ slurm_group }}"
+    mode: "0644"
+  tags: [ services, status ]
+
+- name: "Сообщение о завершении настройки сервисов"
+  debug:
+    msg: |
+      ===================================================================
+      SLURM SERVICES CONFIGURATION COMPLETED
+      ===================================================================
+
+      Enabled services:
+      - MUNGE: Authentication service
+      {% if slurm_enable_slurmdbd | default(true) %}
+      - SLURMDBD: Database daemon for accounting
+      {% endif %}
+      - SLURMCTLD: Controller daemon
+      {% if slurm_enable_rest_api | default(false) %}
+      - SLURMRESTD: REST API service
+      {% endif %}
+
+      Management commands:
+      - Check cluster status: {{ slurm_install_prefix }}/bin/sinfo
+      - View jobs: {{ slurm_install_prefix }}/bin/squeue
+      - Service control: {{ slurm_install_prefix }}/bin/slurm-services
+
+      {% if slurm_enable_rest_api | default(false) %}
+      REST API URL: {{ 'https' if slurm_enable_rest_ssl | default(true) else 'http' }}://{{ slurm_master_address }}:{{ slurm_slurmrestd_port }}
+      {% endif %}
+
+      Log files:
+      - Controller: {{ slurm_slurmctld_log_file }}
+      {% if slurm_enable_slurmdbd | default(true) %}
+      - Database: {{ slurm_slurmdbd_log_file }}
+      {% endif %}
+
+      ===================================================================
+  tags: [ services, summary ]

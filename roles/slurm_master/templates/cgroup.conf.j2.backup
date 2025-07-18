@@ -29,12 +29,7 @@ CgroupMountpoint={{ slurm_cgroup_mountpoint }}
 # =============================================================================
 
 # Cgroup plugin to use (cgroup/v1 or cgroup/v2)
-# Cgroup plugin selection based on Ubuntu version
-{% if ansible_distribution == "Ubuntu" and ansible_distribution_version is version("24.04", ">=") %}
-CgroupPlugin=cgroup/v2
-{% else %}
-CgroupPlugin={{ slurm_cgroup_plugin | default("cgroup/v1") }}
-{% endif %}
+CgroupPlugin={{ slurm_cgroup_plugin | default('cgroup/v1') }}
 
 # =============================================================================
 # CPU CONSTRAINT SETTINGS

@@ -1,0 +1,67 @@
+---
+# =============================================================================
+# ОСНОВНЫЕ ЗАДАЧИ РОЛИ COMMON
+# =============================================================================
+
+- name: "Показать информацию о хосте"
+  debug:
+    msg:
+      - "Настройка хоста: {{ inventory_hostname }}"
+      - "ОС: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+      - "Архитектура: {{ ansible_architecture }}"
+      - "CPU: {{ ansible_processor_vcpus }}"
+      - "RAM: {{ (ansible_memtotal_mb / 1024) | round(1) }}GB"
+  tags: 
+    - info
+    - always
+
+- name: "Проверка поддерживаемой ОС"
+  assert:
+    that:
+      - ansible_distribution == "Ubuntu"
+      - ansible_distribution_version is version('20.04', '>=')
+    fail_msg: "Поддерживается только Ubuntu 20.04+"
+    success_msg: "ОС поддерживается: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+  tags:
+    - validation
+
+- name: "Обновление системных пакетов"
+  include_tasks: packages.yml
+  tags:
+    - packages
+    - system
+
+- name: "Создание пользователей и групп"
+  include_tasks: users.yml
+  tags:
+    - users
+    - security
+
+- name: "Создание директорий"
+  include_tasks: directories.yml
+  tags:
+    - directories
+    - filesystem
+
+- name: "Настройка системных параметров"
+  include_tasks: system.yml
+  tags:
+    - system
+    - performance
+
+- name: "Настройка окружения"
+  include_tasks: environment.yml
+  tags:
+    - environment
+    - shell
+
+- name: "Финальная проверка готовности системы"
+  debug:
+    msg:
+      - "Базовая настройка {{ inventory_hostname }} завершена"
+      - "Slurm пользователь: {{ slurm_user }} (UID: {{ slurm_uid }})"
+      - "MUNGE пользователь: {{ munge_user }} (UID: {{ munge_uid }})"
+      - "Префикс Slurm: {{ slurm_prefix }}"
+  tags:
+    - info
+    - always

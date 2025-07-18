@@ -1,0 +1,115 @@
+---
+# =============================================================================
+# ОСНОВНЫЕ ЗАДАЧИ РОЛИ SLURM_MASTER
+# =============================================================================
+
+- name: "Отображение информации о настройке Slurm master"
+  debug:
+    msg:
+    - "Настройка Slurm Master: {{ inventory_hostname }}"
+    - "Версия Slurm: {{ slurm_version }}"
+    - "Кластер: {{ slurmctld_options.cluster_name }}"
+    - "База данных: {{ database_type }} на {{ database_host }}"
+    - "JWT включен: {{ jwt_options.enabled }}"
+    - "REST API включен: {{ slurmrestd_options.enabled }}"
+  tags:
+  - info
+  - always
+
+- name: "Проверка роли хоста"
+  assert:
+    that:
+    - inventory_hostname in groups['slurm_master']
+    fail_msg: "Эта роль должна применяться только к хостам из группы slurm_master"
+    success_msg: "Хост {{ inventory_hostname }} корректно определен как slurm_master"
+  tags:
+  - validation
+
+- name: "Установка необходимых пакетов и зависимостей"
+  include_tasks: packages.yml
+  tags:
+  - packages
+  - dependencies
+
+- name: "Настройка базы данных MySQL"
+  include_tasks: mysql.yml
+  tags:
+  - mysql
+  - database
+
+- name: "Компиляция и установка Slurm"
+  include_tasks: build_slurm.yml
+  tags:
+  - build
+  - compile
+  - slurm
+
+- name: "Настройка Slurm Database Daemon (slurmdbd)"
+  include_tasks: configure_slurmdbd.yml
+  tags:
+  - slurmdbd
+  - database
+  - config
+
+- name: "Настройка Slurm Controller (slurmctld)"
+  include_tasks: configure_slurmctld.yml
+  tags:
+  - slurmctld
+  - controller
+  - config
+
+- name: "Настройка JWT аутентификации"
+  include_tasks: configure_jwt.yml
+  when: jwt_options.enabled | bool
+  tags:
+  - jwt
+  - auth
+  - security
+
+- name: "Настройка Slurm REST API (slurmrestd)"
+  include_tasks: configure_slurmrestd.yml
+  when: slurmrestd_options.enabled | bool
+  tags:
+  - slurmrestd
+  - api
+  - rest
+
+- name: "Настройка systemd сервисов"
+  include_tasks: services.yml
+  tags:
+  - services
+  - systemd
+
+- name: "Инициализация кластера и создание аккаунтов"
+  include_tasks: cluster_init.yml
+  tags:
+  - cluster
+  - init
+  - accounts
+
+- name: "Валидация установки и конфигурации"
+  include_tasks: validation.yml
+  tags:
+  - validation
+  - test
+
+- name: "Настройка резервного копирования"
+  include_tasks: backup.yml
+  when: backup_enabled | bool
+  tags:
+  - backup
+  - maintenance
+
+- name: "Финальная информация о Slurm Master"
+  debug:
+    msg:
+    - "✅ Slurm Master успешно настроен на {{ inventory_hostname }}"
+    - "🔧 Сервисы: {{ slurm_master_services | join(', ') }}"
+    - "🌐 REST API: http://{{ inventory_hostname }}:{{ slurmrestd_options.port }}"
+    - "📊 База данных: {{ database_name }} на {{ database_host }}"
+    - "🔐 JWT ключи: {{ jwt_options.key_file }}"
+    - "📝 Логи: {{ slurm_log_dir }}"
+    - "⚡ Готов к добавлению compute нод"
+  tags:
+  - info
+  - always

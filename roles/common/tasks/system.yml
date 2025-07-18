@@ -1,0 +1,200 @@
+---
+# =============================================================================
+# СИСТЕМНЫЕ НАСТРОЙКИ ДЛЯ ОПТИМИЗАЦИИ ПРОИЗВОДИТЕЛЬНОСТИ
+# =============================================================================
+
+- name: "Настройка timezone"
+  timezone:
+    name: "{{ timezone }}"
+  notify: restart systemd-timesyncd
+  tags:
+  - system
+  - timezone
+
+- name: "Настройка локали"
+  locale_gen:
+    name: "{{ locale }}"
+    state: present
+  tags:
+  - system
+  - locale
+
+- name: "Применение sysctl настроек для производительности"
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+    sysctl_file: /etc/sysctl.d/99-slurm-hpc.conf
+  loop: "{{ sysctl_settings | dict2items }}"
+  tags:
+  - system
+  - performance
+  - sysctl
+
+- name: "Настройка лимитов пользователей"
+  pam_limits:
+    domain: "{{ item.domain }}"
+    limit_type: "{{ item.type }}"
+    limit_item: "{{ item.item }}"
+    value: "{{ item.value }}"
+  loop: "{{ limits_settings }}"
+  tags:
+  - system
+  - limits
+
+- name: "Создание конфигурации systemd для лимитов"
+  blockinfile:
+    path: /etc/systemd/system.conf
+    backup: yes
+    block: |
+      # Slurm HPC optimizations
+      DefaultLimitNOFILE=131072
+      DefaultLimitNPROC=65536
+      DefaultLimitMEMLOCK=infinity
+      DefaultLimitSTACK=8388608
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - HPC LIMITS"
+  notify: reload systemd
+  tags:
+  - system
+  - systemd
+  - limits
+
+- name: "Отключение swap (рекомендуется для HPC)"
+  command: swapoff -a
+  ignore_errors: yes
+  tags:
+  - system
+  - swap
+
+- name: "Отключение swap в fstab"
+  replace:
+    path: /etc/fstab
+    regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+    replace: '# \1'
+    backup: yes
+  tags:
+  - system
+  - swap
+
+- name: "Настройка systemd-timesyncd"
+  blockinfile:
+    path: /etc/systemd/timesyncd.conf
+    backup: yes
+    block: |
+      [Time]
+      NTP={{ ntp_servers | join(' ') }}
+      FallbackNTP=pool.ntp.org
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - NTP"
+  notify: restart systemd-timesyncd
+  tags:
+  - system
+  - ntp
+
+- name: "Включение необходимых системных сервисов"
+  systemd:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  loop: "{{ system_services.enabled }}"
+  tags:
+  - system
+  - services
+
+- name: "Отключение ненужных сервисов"
+  systemd:
+    name: "{{ item }}"
+    enabled: no
+    state: stopped
+    daemon_reload: yes
+  loop: "{{ system_services.disabled }}"
+  ignore_errors: yes
+  tags:
+  - system
+  - services
+
+- name: "Настройка rsyslog для централизованного логирования"
+  blockinfile:
+    path: /etc/rsyslog.d/50-slurm.conf
+    create: yes
+    block: |
+      # Slurm logging configuration
+      $template SlurmJobLogFormat,"%timegenerated% %hostname% %syslogtag% %msg%\n"
+
+      # Local Slurm logs
+      local0.*    /var/log/slurm/slurmctld.log;SlurmJobLogFormat
+      local1.*    /var/log/slurm/slurmd.log;SlurmJobLogFormat
+      local2.*    /var/log/slurm/slurmdbd.log;SlurmJobLogFormat
+
+      # Stop processing if matched
+      local0.*    ~
+      local1.*    ~
+      local2.*    ~
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - SLURM LOGGING"
+  notify: restart rsyslog
+  tags:
+  - system
+  - logging
+
+- name: "Создание logrotate конфигурации для Slurm"
+  copy:
+    dest: /etc/logrotate.d/slurm
+    content: |
+      /var/log/slurm/*.log {
+          daily
+          missingok
+          rotate 14
+          compress
+          delaycompress
+          notifempty
+          create 0640 slurm slurm
+          postrotate
+              /bin/systemctl reload rsyslog > /dev/null 2>&1 || true
+          endscript
+      }
+    owner: root
+    group: root
+    mode: '0644'
+  tags:
+  - system
+  - logging
+
+- name: "Настройка kernel параметров для InfiniBand (если присутствует)"
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+    sysctl_file: /etc/sysctl.d/99-infiniband.conf
+  loop:
+  - { key: "net.core.rmem_max", value: "268435456" }
+  - { key: "net.core.wmem_max", value: "268435456" }
+  - { key: "net.ipv4.tcp_rmem", value: "4096 65536 268435456" }
+  - { key: "net.ipv4.tcp_wmem", value: "4096 65536 268435456" }
+  when: ansible_interfaces | select('match', '^ib.*') | list | length > 0
+  tags:
+  - system
+  - infiniband
+  - network
+
+- name: "Проверка применения системных настроек"
+  command: "{{ item }}"
+  register: system_check
+  changed_when: false
+  failed_when: false
+  loop:
+  - "sysctl net.core.rmem_max"
+  - "ulimit -n"
+  - "systemctl is-active systemd-timesyncd"
+  - "timedatectl status"
+  tags:
+  - system
+  - validation
+
+- name: "Отображение результатов системных проверок"
+  debug:
+    var: system_check.results
+  tags:
+  - system
+  - info

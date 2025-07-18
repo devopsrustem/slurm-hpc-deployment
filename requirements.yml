@@ -1,0 +1,29 @@
+---
+# Ansible Collections требуемые для slurm-hpc-deployment
+
+collections:
+  # Основные системные модули
+  - name: community.general
+    version: ">=8.0.0"
+    source: https://galaxy.ansible.com
+
+  # POSIX системные операции (mount, systemd, etc.)
+  - name: ansible.posix
+    version: ">=1.5.0"
+    source: https://galaxy.ansible.com
+
+  # MySQL/MariaDB для slurmdbd
+  - name: community.mysql
+    version: ">=3.8.0"
+    source: https://galaxy.ansible.com
+
+  # Дополнительные криптографические функции для JWT
+  - name: community.crypto
+    version: ">=2.16.0"
+    source: https://galaxy.ansible.com
+
+# Ansible Galaxy roles (если понадобятся)
+roles: []
+
+# Минимальная версия Ansible
+# ansible_version: ">=2.15.0"

@@ -1,0 +1,151 @@
+# Slurm HPC Cluster Inventory
+# 
+# Скопируйте этот файл в config/inventory и адаптируйте под ваш кластер
+#
+# Пример конфигурации для кластера:
+# - sm02: master node (slurmctld + slurmdbd)
+# - sm03: login node (клиенты + SSH доступ)
+# - cn[01-64]: compute nodes (slurmd + GPU)
+
+# =============================================================================
+# ХОСТЫ КЛАСТЕРА
+# =============================================================================
+
+[all]
+# Master node - контроллер Slurm
+sm02 ansible_host=192.168.1.10
+
+# Login node - пользовательский доступ
+sm03 ansible_host=192.168.1.11
+
+# Compute nodes - вычислительные узлы
+cn01 ansible_host=192.168.1.21
+cn02 ansible_host=192.168.1.22
+cn03 ansible_host=192.168.1.23
+cn04 ansible_host=192.168.1.24
+# cn05 ansible_host=192.168.1.25
+# cn06 ansible_host=192.168.1.26
+# ... добавьте остальные compute ноды по необходимости
+# cn64 ansible_host=192.168.1.84
+
+# =============================================================================
+# ГРУППЫ SLURM
+# =============================================================================
+
+# Slurm controller + database
+[slurm_master]
+sm02
+
+# Slurm login nodes  
+[slurm_login]
+sm03
+
+# Slurm compute nodes
+[slurm_compute]
+cn01
+cn02
+cn03
+cn04
+# cn[05:64]  # Раскомментируйте для полного кластера
+
+# =============================================================================
+# ГРУППЫ СЕРВИСОВ
+# =============================================================================
+
+# NFS server (обычно на master ноде)
+[nfs_server]
+sm02
+
+# NFS clients (все остальные ноды)
+[nfs_client:children]
+slurm_login
+slurm_compute
+
+# Узлы с GPU (для Enroot + Pyxis)
+[gpu_nodes:children]
+slurm_compute
+
+# Узлы для JWT токенов (master + login)
+[jwt_nodes:children]
+slurm_master
+slurm_login
+
+# =============================================================================
+# ОБЩИЕ ГРУППЫ
+# =============================================================================
+
+# Весь Slurm кластер
+[slurm_cluster:children]
+slurm_master
+slurm_login
+slurm_compute
+
+# Все ноды для общих задач
+[cluster_nodes:children]
+slurm_cluster
+
+# =============================================================================
+# ПЕРЕМЕННЫЕ ДЛЯ ВСЕХ ХОСТОВ
+# =============================================================================
+
+[all:vars]
+# Отключаем проверку host keys для ускорения
+ansible_ssh_common_args='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+
+# Python интерпретатор
+ansible_python_interpreter=/usr/bin/python3
+
+# Timezone
+timezone=Europe/Moscow
+
+# =============================================================================
+# ГРУППО-СПЕЦИФИЧНЫЕ ПЕРЕМЕННЫЕ
+# =============================================================================
+
+[slurm_master:vars]
+# Master node специфичные настройки
+slurm_controller_role=primary
+
+[slurm_compute:vars]
+# Compute nodes специфичные настройки
+slurm_node_role=compute
+
+# Пример переменных для GPU нод
+gpu_count=8  # Количество GPU на ноду (для DGX H100)
+gpu_type=h100
+
+[slurm_login:vars]
+# Login nodes специфичные настройки
+slurm_node_role=login
+
+# =============================================================================
+# ПРИМЕРЫ РАСШИРЕННОЙ КОНФИГУРАЦИИ
+# =============================================================================
+
+# Раскомментируйте и адаптируйте при необходимости:
+
+# Если у вас разные типы compute нод:
+# [gpu_nodes_h100]
+# cn[01:32]
+#
+# [gpu_nodes_a100]
+# cn[33:64]
+#
+# [gpu_nodes_h100:vars]
+# gpu_type=h100
+# gpu_count=8
+#
+# [gpu_nodes_a100:vars]
+# gpu_type=a100
+# gpu_count=8
+
+# Если master node в HA конфигурации:
+# [slurm_master]
+# sm02 slurm_controller_role=primary
+# sm02-backup slurm_controller_role=backup
+
+# Если несколько login нод:
+# [slurm_login]
+# sm03
+# sm04
+# sm05

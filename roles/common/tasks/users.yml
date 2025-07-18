@@ -1,0 +1,105 @@
+---
+# =============================================================================
+# СОЗДАНИЕ ПОЛЬЗОВАТЕЛЕЙ И ГРУПП ДЛЯ SLURM И MUNGE
+# =============================================================================
+
+- name: "Создание группы slurm"
+  group:
+    name: "{{ slurm_group }}"
+    gid: "{{ slurm_gid }}"
+    state: present
+    system: yes
+  tags:
+  - users
+  - slurm
+
+- name: "Создание пользователя slurm"
+  user:
+    name: "{{ slurm_user }}"
+    uid: "{{ slurm_uid }}"
+    group: "{{ slurm_group }}"
+    home: "/var/lib/slurm"
+    shell: "/bin/bash"
+    system: yes
+    create_home: yes
+    state: present
+    comment: "Slurm Workload Manager"
+  tags:
+  - users
+  - slurm
+
+- name: "Создание группы munge"
+  group:
+    name: "{{ munge_group }}"
+    gid: "{{ munge_gid }}"
+    state: present
+    system: yes
+  tags:
+  - users
+  - munge
+
+- name: "Создание пользователя munge"
+  user:
+    name: "{{ munge_user }}"
+    uid: "{{ munge_uid }}"
+    group: "{{ munge_group }}"
+    home: "/var/lib/munge"
+    shell: "/bin/false"
+    system: yes
+    create_home: yes
+    state: present
+    comment: "MUNGE Authentication Service"
+  tags:
+  - users
+  - munge
+
+- name: "Добавление пользователя slurm в дополнительные группы"
+  user:
+    name: "{{ slurm_user }}"
+    groups:
+    - "{{ munge_group }}"
+    - "adm"
+    append: yes
+  tags:
+  - users
+  - slurm
+
+- name: "Проверка создания пользователей"
+  command: "id {{ item }}"
+  register: user_check
+  failed_when: user_check.rc != 0
+  changed_when: false
+  loop:
+  - "{{ slurm_user }}"
+  - "{{ munge_user }}"
+  tags:
+  - users
+  - validation
+
+- name: "Отображение информации о созданных пользователях"
+  debug:
+    var: user_check.results
+  tags:
+  - users
+  - info
+
+- name: "Создание базовой структуры .bashrc для пользователя slurm"
+  blockinfile:
+    path: "/var/lib/slurm/.bashrc"
+    create: yes
+    owner: "{{ slurm_user }}"
+    group: "{{ slurm_group }}"
+    mode: '0644'
+    block: |
+      # Slurm environment
+      export PATH="/opt/slurm/bin:/opt/slurm/sbin:$PATH"
+      export LD_LIBRARY_PATH="/opt/slurm/lib:/opt/slurm/lib64:$LD_LIBRARY_PATH"
+      export MANPATH="/opt/slurm/share/man:$MANPATH"
+
+      # Aliases
+      alias sinfo='sinfo -o "%20N %10T %4c %8z %15C %8O %8m %18f %19E"'
+      alias squeue='squeue -o "%.7i %.12j %.8u %.8T %.10M %.9l %.6D %R"'
+      alias sacct='sacct --format=JobID,JobName,User,State,Start,End,Elapsed,CPUTime,ReqMem,MaxRSS'
+  tags:
+  - users
+  - environment

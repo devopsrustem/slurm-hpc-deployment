@@ -1,0 +1,56 @@
+---
+# =============================================================================
+# ВНУТРЕННИЕ ПЕРЕМЕННЫЕ РОЛИ COMMON
+# =============================================================================
+
+# Версии пакетов (для проверки совместимости)
+required_package_versions:
+  gcc: "9.0"
+  python3: "3.8"
+  cmake: "3.16"
+  autoconf: "2.69"
+
+# Список критически важных команд для валидации
+critical_commands:
+- gcc
+- make
+- python3
+- pkg-config
+- autoconf
+- automake
+- libtool
+- cmake
+
+# Системные группы для добавления пользователей
+system_groups:
+- adm
+- systemd-journal
+
+# Директории которые должны быть исключены из backup
+backup_exclude_dirs:
+- "/tmp"
+- "/var/tmp"
+- "/var/cache"
+- "/var/spool/slurm"
+- "/var/run"
+- "/proc"
+- "/sys"
+- "/dev"
+
+# Сервисы которые должны быть запущены после настройки
+post_setup_services:
+- systemd-timesyncd
+- rsyslog
+- ssh
+
+# Минимальные требования к системе
+system_requirements:
+  min_memory_gb: 4
+  min_disk_gb: 20
+  min_cpu_cores: 2
+
+# Сетевые интерфейсы которые нужно игнорировать при настройке
+ignore_interfaces:
+- lo
+- docker0
+- virbr0

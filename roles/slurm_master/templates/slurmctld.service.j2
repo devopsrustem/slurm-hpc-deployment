@@ -1,0 +1,50 @@
+[Unit]
+Description=Slurm Database Daemon
+Documentation=man:slurmdbd(8)
+After=network-online.target mysql.service munge.service
+Wants=network-online.target
+Requires=mysql.service munge.service
+ConditionPathExists=/etc/slurm/slurmdbd.conf
+
+[Service]
+Type=notify
+User={{ slurm_user }}
+Group={{ slurm_group }}
+Environment="SLURM_CONF=/etc/slurm/slurm.conf"
+Environment="SLURMDBD_CONF=/etc/slurm/slurmdbd.conf"
+ExecStart={{ slurm_prefix }}/sbin/slurmdbd -D
+ExecReload=/bin/kill -HUP $MAINPID
+PIDFile={{ slurm_run_dir }}/slurmdbd.pid
+LimitNOFILE=131072
+LimitNPROC=65536
+LimitMEMLOCK=infinity
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectControlGroups=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+
+# Directories
+RuntimeDirectory=slurm
+RuntimeDirectoryMode=0755
+StateDirectory=slurm
+StateDirectoryMode=0755
+LogsDirectory=slurm
+LogsDirectoryMode=0755
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=300
+TimeoutStopSec=120
+
+# Process limits
+TasksMax=8192
+MemoryAccounting=yes
+
+[Install]
+WantedBy=multi-user.target

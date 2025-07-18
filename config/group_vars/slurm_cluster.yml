@@ -1,0 +1,226 @@
+---
+# =============================================================================
+# КОНФИГУРАЦИЯ SLURM HPC КЛАСТЕРА
+# =============================================================================
+
+# Общие настройки кластера
+cluster_name: "hpc-cluster"
+domain_name: "local"
+
+# Timezone
+timezone: "Europe/Moscow"
+
+# =============================================================================
+# НАСТРОЙКИ РОЛИ COMMON
+# =============================================================================
+
+# Обновление системы
+update_system_packages: true
+reboot_after_kernel_update: false
+
+# Пользователи и группы (оставляем по умолчанию)
+slurm_user: "slurm"
+slurm_group: "slurm"
+slurm_uid: 981
+slurm_gid: 981
+
+munge_user: "munge"
+munge_group: "munge"
+munge_uid: 982
+munge_gid: 982
+
+# Базовые директории
+slurm_prefix: "/opt/slurm"
+slurm_spool_dir: "/var/spool/slurm"
+slurm_log_dir: "/var/log/slurm"
+slurm_run_dir: "/var/run/slurm"
+slurm_lib_dir: "/var/lib/slurm"
+
+# NTP серверы для синхронизации времени
+ntp_servers:
+- "0.ru.pool.ntp.org"
+- "1.ru.pool.ntp.org"
+- "2.ru.pool.ntp.org"
+- "3.ru.pool.ntp.org"
+
+# =============================================================================
+# НАСТРОЙКИ ПРОИЗВОДИТЕЛЬНОСТИ ДЛЯ DGX H100
+# =============================================================================
+
+# Дополнительные sysctl настройки для высокопроизводительной сети
+sysctl_settings:
+  # Базовые сетевые настройки
+  "net.core.rmem_max": "268435456" # 256MB для InfiniBand
+  "net.core.wmem_max": "268435456" # 256MB для InfiniBand
+  "net.core.rmem_default": "16777216" # 16MB по умолчанию
+  "net.core.wmem_default": "16777216" # 16MB по умолчанию
+  "net.core.netdev_max_backlog": "30000" # Увеличено для высокой нагрузки
+  "net.ipv4.tcp_rmem": "4096 65536 268435456"
+  "net.ipv4.tcp_wmem": "4096 65536 268435456"
+  "net.ipv4.tcp_congestion_control": "bbr"
+
+  # Настройки для многоядерных систем
+  "net.core.rps_sock_flow_entries": "32768"
+  "net.ipv4.tcp_window_scaling": "1"
+  "net.ipv4.tcp_timestamps": "1"
+  "net.ipv4.tcp_sack": "1"
+
+  # Файловая система (для NVMe SSD)
+  "fs.file-max": "4194304" # Увеличено для больших кластеров
+  "fs.nr_open": "4194304"
+  "fs.aio-max-nr": "1048576"
+
+  # Виртуальная память (оптимизация для NVMe)
+  "vm.swappiness": "1" # Минимизируем swap
+  "vm.dirty_ratio": "5" # Быстрая запись для NVMe
+  "vm.dirty_background_ratio": "2"
+  "vm.dirty_expire_centisecs": "3000" # 30 секунд
+  "vm.dirty_writeback_centisecs": "1000" # 10 секунд
+  "vm.vfs_cache_pressure": "50" # Кэширование файлов
+
+# Увеличенные лимиты для DGX H100
+limits_settings:
+- domain: "*"
+  type: "soft"
+  item: "nofile"
+  value: "131072" # Увеличено для больших задач
+- domain: "*"
+  type: "hard"
+  item: "nofile"
+  value: "262144"
+- domain: "*"
+  type: "soft"
+  item: "nproc"
+  value: "65536"
+- domain: "*"
+  type: "hard"
+  item: "nproc"
+  value: "131072"
+- domain: "*"
+  type: "soft"
+  item: "memlock"
+  value: "unlimited" # Для CUDA и InfiniBand
+- domain: "*"
+  type: "hard"
+  item: "memlock"
+  value: "unlimited"
+
+# =============================================================================
+# ВЕРСИИ КОМПОНЕНТОВ
+# =============================================================================
+
+# Версии основных компонентов (будут использоваться в других ролях)
+component_versions:
+  slurm: "25.05.1"
+  enroot: "3.5.0"
+  pyxis: "0.20.0"
+  munge: "0.5.16"
+  hwloc: "2.11.0"
+
+# =============================================================================
+# СЕТЕВЫЕ НАСТРОЙКИ
+# =============================================================================
+
+# Настройки для InfiniBand (если присутствует)
+infiniband_enabled: true
+infiniband_optimizations:
+  # NCCL настройки для оптимальной производительности
+  NCCL_IB_DISABLE: "0"
+  NCCL_IB_GID_INDEX: "3"
+  NCCL_IB_HCA: "mlx5_0,mlx5_1,mlx5_2,mlx5_3,mlx5_4,mlx5_5,mlx5_6,mlx5_7"
+  NCCL_IB_TIMEOUT: "18"
+  NCCL_DEBUG: "INFO"
+
+  # UCX настройки для MPI
+  UCX_TLS: "rc,ud,mm,shm,cuda_copy,cuda_ipc"
+  UCX_NET_DEVICES: "mlx5_0:1,mlx5_1:1,mlx5_2:1,mlx5_3:1,mlx5_4:1,mlx5_5:1,mlx5_6:1,mlx5_7:1"
+
+# =============================================================================
+# ЛОГИРОВАНИЕ И ОТЛАДКА
+# =============================================================================
+
+# Уровень логирования
+log_level: "info"
+enable_debug_logging: false
+
+# Централизованное логирование 
+centralized_logging: true
+log_retention_days: 30
+
+# =============================================================================
+# БЕЗОПАСНОСТЬ
+# =============================================================================
+
+# SSH настройки
+ssh_hardening: true
+ssh_settings:
+  PermitRootLogin: "no"
+  PasswordAuthentication: "no"
+  PubkeyAuthentication: "yes"
+  X11Forwarding: "yes" # Нужно для GUI приложений
+  ClientAliveInterval: "300"
+  ClientAliveCountMax: "2"
+
+# Firewall (базовые правила)
+firewall_enabled: false # Отключаем для упрощения в закрытой сети
+
+# =============================================================================
+# ДОПОЛНИТЕЛЬНЫЕ ПАКЕТЫ ДЛЯ HPC
+# =============================================================================
+
+# Дополнительные пакеты для работы с DGX H100
+additional_packages:
+- nvidia-utils-535 # NVIDIA утилиты
+- pciutils # lspci для диагностики
+- hwloc-nox # HWLOC без X11
+- numactl # NUMA управление
+- htop # Мониторинг процессов
+- iotop # Мониторинг I/O
+- nethogs # Мониторинг сети
+- tcpdump # Анализ трафика
+- strace # Отладка системных вызовов
+- gdb # Отладчик
+- valgrind # Профилировщик памяти
+
+# Python пакеты для администрирования
+python_admin_packages:
+- psutil # Системная информация
+- requests # HTTP клиент
+- pyyaml # YAML парсер
+- jinja2 # Шаблонизатор
+
+# =============================================================================
+# ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ
+# =============================================================================
+
+# Глобальные переменные окружения для всех пользователей
+global_environment:
+  # Slurm
+  PATH: "/opt/slurm/bin:/opt/slurm/sbin:$PATH"
+  LD_LIBRARY_PATH: "/opt/slurm/lib:/opt/slurm/lib64:$LD_LIBRARY_PATH"
+  MANPATH: "/opt/slurm/share/man:$MANPATH"
+
+  # CUDA (если установлен)
+  CUDA_CACHE_PATH: "/tmp/cuda-cache"
+
+  # Оптимизации компилятора
+  CC: "gcc"
+  CXX: "g++"
+  FC: "gfortran"
+
+# =============================================================================
+# МОНИТОРИНГ И МЕТРИКИ (для будущего использования)
+# =============================================================================
+
+# Настройки мониторинга (пока отключены)
+monitoring_enabled: false
+metrics_retention_days: 90
+
+# =============================================================================
+# РЕЗЕРВНОЕ КОПИРОВАНИЕ
+# =============================================================================
+
+# Настройки резервного копирования конфигураций
+backup_enabled: true
+backup_schedule: "daily"
+backup_retention_days: 30

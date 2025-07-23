@@ -1,0 +1,10 @@
+---
+# Настройка JWT аутентификации
+
+- name: "Setup JWT Authentication"
+  hosts: slurm-jwt
+  become: true
+  tasks:
+    - name: "JWT setup"
+      debug:
+        msg: "TODO: JWT настройка"

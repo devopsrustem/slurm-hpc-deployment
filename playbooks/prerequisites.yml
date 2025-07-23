@@ -1,0 +1,8 @@
+---
+# Подготовка всех узлов кластера
+
+- name: "Prerequisites - Common setup"
+  hosts: slurm-cluster
+  become: true
+  roles:
+    - common

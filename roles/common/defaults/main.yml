@@ -1,0 +1,132 @@
+# roles/common/defaults/main.yml
+---
+# Переменные по умолчанию для роли common
+
+# =============================================================================
+# СИСТЕМНЫЕ НАСТРОЙКИ
+# =============================================================================
+
+# Базовые пакеты для всех узлов
+common_base_packages:
+  - build-essential
+  - git
+  - curl
+  - wget
+  - vim
+  - htop
+  - tree
+  - rsync
+  - python3-dev
+  - pkg-config
+  - libtool
+  - autotools-dev
+  - autoconf
+  - automake
+  - cmake
+  - gcc
+  - g++
+  - make
+  - libssl-dev
+  - libcurl4-openssl-dev
+  - libjson-c-dev
+  - libhttp-parser-dev
+  - libjwt-dev
+  - libmysqlclient-dev
+
+# Timezone по умолчанию
+timezone: "Europe/Moscow"
+
+# =============================================================================
+# ПОЛЬЗОВАТЕЛИ SLURM
+# =============================================================================
+
+# Пользователь Slurm
+slurm_user: "slurm"
+slurm_uid: 1001
+slurm_group: "slurm"
+slurm_gid: 1001
+
+# =============================================================================
+# ДИРЕКТОРИИ
+# =============================================================================
+
+# Базовые директории Slurm
+slurm_base_dirs:
+  - path: /var/log/slurm
+    owner: slurm
+    group: slurm
+    mode: '0755'
+  - path: /var/spool/slurm
+    owner: slurm
+    group: slurm
+    mode: '0755'
+  - path: /var/spool/slurm/ctld
+    owner: slurm
+    group: slurm
+    mode: '0755'
+  - path: /var/spool/slurm/d
+    owner: slurm
+    group: slurm
+    mode: '0755'
+  - path: /etc/slurm
+    owner: root
+    group: root
+    mode: '0755'
+  - path: /var/lib/slurm
+    owner: slurm
+    group: slurm
+    mode: '0755'
+
+# NFS директории для экспорта
+nfs_export_dirs:
+  - /shared
+  - /home/shared
+
+# =============================================================================
+# NFS НАСТРОЙКИ
+# =============================================================================
+
+# NFS сеть для экспорта (подставьте вашу подсеть)
+nfs_export_network: "10.20.90.0/24"
+
+# IP адрес NFS сервера (обычно master узел)
+nfs_server_ip: "10.20.90.166"  # sm01
+
+# NFS опции по умолчанию
+nfs_export_options: "rw,sync,no_root_squash"
+
+# NFS mount опции
+nfs_mount_options: "defaults"
+
+# =============================================================================
+# MUNGE НАСТРОЙКИ
+# =============================================================================
+
+# MUNGE директории и права
+munge_dirs:
+  - path: /etc/munge
+    owner: munge
+    group: munge
+    mode: '0700'
+  - path: /var/log/munge
+    owner: munge
+    group: munge
+    mode: '0700'
+  - path: /var/lib/munge
+    owner: munge
+    group: munge
+    mode: '0700'
+  - path: /run/munge
+    owner: munge
+    group: munge
+    mode: '0755'
+
+# =============================================================================
+# ПРОВЕРКИ И ВЕРИФИКАЦИЯ
+# =============================================================================
+
+# Включить проверки после установки
+common_verify_installation: true
+
+# Тайм-аут для проверок (секунды)
+common_verify_timeout: 30

@@ -1,0 +1,8 @@
+---
+# Развертывание контейнерной поддержки
+
+- name: "Setup Enroot + Pyxis"
+  hosts: slurm-cluster
+  become: true
+  roles:
+    - containers

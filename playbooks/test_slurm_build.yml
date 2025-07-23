@@ -1,0 +1,71 @@
+---
+# Тестовый playbook для роли slurm_build
+
+- name: "Тестирование роли slurm_build"
+  hosts: slurm_cluster
+  become: true
+  gather_facts: true
+  
+  pre_tasks:
+    - name: "Информация о сборке Slurm"
+      debug:
+        msg: |
+          🔨 Начинаем сборку Slurm {{ slurm_version }}
+          📍 Сборка на: {{ groups['slurm_master'][0] }}
+          📦 Установка на: {{ groups['slurm_cluster'] | join(', ') }}
+          🔐 JWT поддержка включена
+      run_once: true
+
+    - name: "Проверка доступного места на диске"
+      shell: "df -h /tmp | tail -1 | awk '{print $4}'"
+      register: disk_space
+      when: inventory_hostname in groups['slurm_master']
+      
+    - name: "Предупреждение о месте на диске"
+      debug:
+        msg: |
+          💾 Доступно места в /tmp: {{ disk_space.stdout }}
+          ⚠️  Для сборки Slurm требуется ~2GB свободного места
+      when: inventory_hostname in groups['slurm_master']
+
+  roles:
+    - slurm_build
+
+  post_tasks:
+    - name: "Проверка установки Slurm"
+      command: "/usr/bin/sinfo --version"
+      register: slurm_check
+      changed_when: false
+      ignore_errors: true
+
+    - name: "Результаты установки"
+      debug:
+        msg: |
+          {% if slurm_check.rc == 0 %}
+          ✅ Slurm успешно установлен на {{ inventory_hostname }}
+          📋 Версия: {{ slurm_check.stdout }}
+          📁 Команды доступны в /usr/bin/, демоны в /usr/sbin/
+          📦 Исходная установка в {{ slurm_install_prefix }}
+          {% else %}
+          ❌ Ошибка проверки Slurm на {{ inventory_hostname }}
+          {% endif %}
+
+    - name: "Проверка доступности команд Slurm"
+      shell: |
+        echo "=== Пользовательские команды Slurm ==="
+        ls -la /usr/bin/s* 2>/dev/null | grep slurm || ls -la /usr/bin/s*info* /usr/bin/s*queue* 2>/dev/null || echo "Команды не найдены"
+        echo "=== Системные демоны Slurm ==="  
+        ls -la /usr/sbin/slurm* 2>/dev/null || echo "Демоны не найдены"
+        echo "=== Установочная директория ==="
+        ls -la {{ slurm_install_prefix }}/bin/ 2>/dev/null | head -5 || echo "Директория установки пуста"
+      register: slurm_binaries
+
+    - name: "Список установленных компонентов"
+      debug:
+        var: slurm_binaries.stdout_lines
+
+  handlers:
+    - name: clean build directory
+      file:
+        path: /tmp/slurm-build
+        state: absent

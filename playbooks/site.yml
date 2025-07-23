@@ -1,0 +1,27 @@
+---
+# Главный playbook для развертывания Slurm HPC кластера
+# Ubuntu 24.04 + Slurm 25.05.1 + JWT
+
+- name: "Slurm HPC Cluster Deployment"
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: "Информация о развертывании"
+      debug:
+        msg: |
+          🚀 Начинаем развертывание Slurm HPC кластера
+          📋 Ubuntu 24.04 + Slurm {{ slurm_version | default('25.05.1') }}
+          🔐 JWT поддержка: {{ jwt_enabled | default(true) }}
+          🎯 Кластер: {{ cluster_name | default('hpc-cluster') }}
+
+# Этап 1: Подготовка всех узлов
+- import_playbook: prerequisites.yml
+
+# Этап 2: Основное развертывание Slurm
+- import_playbook: slurm_cluster.yml
+
+# Этап 3: Контейнеры Enroot + Pyxis  
+- import_playbook: containers.yml
+
+# Этап 4: JWT настройка
+- import_playbook: jwt_setup.yml

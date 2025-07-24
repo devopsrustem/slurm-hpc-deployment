@@ -1,0 +1,96 @@
+# playbooks/test_slurm_master_simple.yml
+---
+# =============================================================================
+# ТЕСТИРОВАНИЕ УПРОЩЕННОЙ РОЛИ SLURM_MASTER
+# =============================================================================
+
+- name: "🧪 Тестирование роли slurm_master (простая версия)"
+  hosts: slurm_master
+  become: yes
+  gather_facts: yes  # Принудительно собираем факты
+  
+  vars:
+    # Переменные для тестирования
+    mysql_root_password: "testroot123"
+    vault_slurm_db_password: "testslurm123"
+    slurm_install_prefix: "/usr/local/slurm"  # Добавляем недостающую переменную
+    jwt_enabled: false  # Отключаем JWT для простоты
+    
+  tasks:
+    - name: "[TEST] Информация о тестировании"
+      debug:
+        msg: |
+          🎯 Тестируем упрощенную роль slurm_master на {{ inventory_hostname }}
+          📦 Slurm собран: {{ slurm_install_prefix }}
+          🐬 MariaDB работает: проверим подключение
+      tags: always
+
+    - name: "[TEST] Проверка MariaDB перед настройкой"
+      command: systemctl status mariadb
+      register: mariadb_status
+      changed_when: false
+      tags: pre-check
+
+    - name: "[TEST] Статус MariaDB"
+      debug:
+        msg: "🐬 MariaDB: {{ mariadb_status.rc == 0 | ternary('работает', 'не работает') }}"
+      tags: pre-check
+
+    - name: "[TEST] Выполнение роли slurm_master"
+      include_role:
+        name: slurm_master
+      tags: role
+
+    - name: "[TEST] Проверка созданных файлов"
+      stat:
+        path: "{{ item }}"
+      register: file_check
+      loop:
+        - "/etc/slurm/slurm.conf"
+        - "/etc/slurm/slurmdbd.conf"  
+        - "/etc/slurm/gres.conf"
+        - "/etc/systemd/system/slurmctld.service"
+        - "/etc/systemd/system/slurmdbd.service"
+      tags: verify
+
+    - name: "[TEST] Результаты проверки файлов"
+      debug:
+        msg: |
+          📁 {{ item.item }}: {{ item.stat.exists | ternary('✅ создан', '❌ отсутствует') }}
+      loop: "{{ file_check.results }}"
+      tags: verify
+
+    - name: "[TEST] Проверка сервисов"
+      systemd:
+        name: "{{ item }}"
+      register: service_check
+      loop:
+        - slurmdbd
+        - slurmctld
+      failed_when: false
+      tags: verify
+
+    - name: "[TEST] Статус сервисов"
+      debug:
+        msg: |
+          🎛️ {{ item.item }}: {{ item.status.ActiveState | default('не найден') }}
+      loop: "{{ service_check.results }}"
+      tags: verify
+
+    - name: "[TEST] Тест scontrol ping"
+      command: "/usr/bin/scontrol ping"
+      register: scontrol_test
+      changed_when: false
+      failed_when: false
+      tags: verify
+
+    - name: "[TEST] Результат scontrol ping"
+      debug:
+        msg: |
+          🔧 scontrol ping: 
+          {% if scontrol_test.rc == 0 %}
+          ✅ УСПЕХ: {{ scontrol_test.stdout }}
+          {% else %}
+          ❌ ОШИБКА: {{ scontrol_test.stderr | default('неизвестная ошибка') }}
+          {% endif %}
+      tags: verify

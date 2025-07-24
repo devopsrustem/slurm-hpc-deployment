@@ -1,0 +1,14 @@
+---
+# Роль: slurm_login - метаданные
+
+galaxy_info:
+  author: DevOps Team
+  description: slurm_login role for Slurm HPC cluster
+  min_ansible_version: 2.15
+  
+  platforms:
+    - name: Ubuntu
+      versions:
+        - 24.04
+
+dependencies: []

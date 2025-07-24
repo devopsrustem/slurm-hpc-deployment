@@ -1,0 +1,65 @@
+# roles/slurm_master/defaults/main.yml
+---
+# =============================================================================
+# SLURM MASTER DEFAULTS (полная версия)
+# =============================================================================
+
+# Slurm installation paths
+slurm_install_prefix: "/usr/local/slurm"
+slurm_config_dir: "/etc/slurm"
+slurm_log_dir: "/var/log/slurm"
+slurm_spool_dir: "/var/spool/slurm"
+
+# Slurm controller settings
+slurm_cluster_name: "hpc-cluster"
+slurm_controller_host: "{{ inventory_hostname }}"
+slurm_controller_addr: "{{ ansible_default_ipv4.address | default(inventory_hostname) }}"
+slurm_controller_port: 6817
+slurm_daemon_port: 6818
+
+# Slurm database settings
+slurm_db_enabled: true
+slurm_db_host: "{{ inventory_hostname }}"
+slurm_db_port: 3306
+slurm_db_name: "slurm_acct_db"
+slurm_db_user: "slurm"
+slurm_db_password: "{{ vault_slurm_db_password | default('slurm123') }}"
+
+# JWT settings
+jwt_enabled: false
+jwt_key_path: "/etc/slurm/jwt_hs256.key"
+
+# MariaDB settings
+mysql_root_password: "{{ vault_mysql_root_password | default('root123') }}"
+
+# Slurm users
+slurm_user: "slurm"
+slurm_group: "slurm"
+
+# MUNGE settings
+munge_key_path: "/etc/munge/munge.key"
+
+# Logging settings
+slurm_debug_level: "3"
+
+# Performance tuning
+slurm_max_job_count: 10000
+slurm_max_array_size: 1000
+slurm_scheduler_timeout: 300
+slurm_node_timeout: 120
+
+# Node configuration defaults (обновлено под ваши узлы)
+slurm_node_defaults:
+  state: "UNKNOWN"
+  cpus: 32          # Примерное значение для ваших узлов
+  real_memory: 64000  # 64GB RAM примерно
+  tmp_disk: 100000    # 100GB временного дискового пространства
+
+# Partition configuration
+slurm_default_partition: "compute"
+slurm_partitions:
+  - name: "compute"
+    nodes: "{{ groups['slurm_compute'] | join(',') }}"
+    default: true
+    max_time: "INFINITE"
+    state: "UP"

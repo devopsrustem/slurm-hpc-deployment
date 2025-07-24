@@ -1,0 +1,84 @@
+# roles/slurm_master/tasks/config.yml
+---
+# =============================================================================
+# SLURM CONFIGURATION FILES (упрощенная версия)
+# =============================================================================
+
+- name: "[CONFIG] Создание основного конфига slurm.conf"
+  template:
+    src: slurm.conf.j2
+    dest: /etc/slurm/slurm.conf
+    owner: slurm
+    group: slurm
+    mode: "0644"
+    backup: yes
+  notify: restart slurmctld
+  tags: config
+
+- name: "[CONFIG] Создание конфига slurmdbd.conf"
+  template:
+    src: slurmdbd.conf.j2
+    dest: /etc/slurm/slurmdbd.conf
+    owner: slurm
+    group: slurm
+    mode: "0600"
+    backup: yes
+  when: slurm_db_enabled | default(true)
+  notify: restart slurmdbd
+  tags: config
+
+- name: "[CONFIG] Создание gres.conf для GPU"
+  template:
+    src: gres.conf.j2
+    dest: /etc/slurm/gres.conf
+    owner: slurm
+    group: slurm
+    mode: "0644"
+    backup: yes
+  notify: restart slurmctld
+  tags: config
+
+- name: "[CONFIG] Создание cgroup.conf"
+  template:
+    src: cgroup.conf.j2
+    dest: /etc/slurm/cgroup.conf
+    owner: slurm
+    group: slurm
+    mode: "0644"
+    backup: yes
+  notify: restart slurmctld
+  tags: config
+
+- name: "[CONFIG] Создание директории для конфигов на NFS"
+  file:
+    path: "/sw/config"
+    state: directory
+    owner: slurm
+    group: slurm
+    mode: "0755"
+  tags: config
+
+- name: "[CONFIG] Копирование конфигов на NFS для распространения"
+  copy:
+    src: "/etc/slurm/{{ item }}"
+    dest: "/sw/config/{{ item }}"
+    remote_src: yes
+    owner: slurm
+    group: slurm
+    mode: "0644"
+  loop:
+    - slurm.conf
+    - cgroup.conf
+    - gres.conf
+  tags: config
+
+- name: "[CONFIG] Конфигурация создана"
+  debug:
+    msg: |
+      📝 Конфигурация Slurm:
+      ✅ slurm.conf создан
+      ✅ gres.conf создан (AutoDetect=nvml)
+      ✅ cgroup.conf создан
+      ✅ slurmdbd.conf создан
+      📤 Файлы скопированы в /sw/config/ для распространения
+  tags: config

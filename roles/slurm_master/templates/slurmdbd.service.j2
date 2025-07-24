@@ -1,0 +1,34 @@
+# roles/slurm_master/templates/slurmdbd.service.j2
+[Unit]
+Description=Slurm DBD accounting daemon
+After=network.target munge.service mysql.service
+Wants=munge.service mysql.service
+ConditionPathExists={{ slurm_config_dir }}/slurmdbd.conf
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/slurmdbd -D
+KillMode=process
+LimitNOFILE=65536
+LimitMEMLOCK=infinity
+LimitSTACK=infinity
+
+# Restart settings
+Restart=on-failure
+RestartSec=5s
+StartLimitInterval=0
+
+# User and permissions (исправлено на root)  
+User=root
+Group=root
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Убираем RuntimeDirectory для упрощения
+# RuntimeDirectory=slurm
+# RuntimeDirectoryMode=0755
+
+[Install]
+WantedBy=multi-user.target

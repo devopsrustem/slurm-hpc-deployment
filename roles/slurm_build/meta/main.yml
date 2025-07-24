@@ -1,0 +1,32 @@
+---
+# Метаданные роли slurm_build
+
+galaxy_info:
+  author: DevOps Team
+  description: Slurm build role - compile and distribute Slurm 25.05.1 with JWT support
+  company: HPC Lab
+  license: MIT
+  min_ansible_version: 2.15
+  
+  platforms:
+    - name: Ubuntu
+      versions:
+        - 24.04
+
+  galaxy_tags:
+    - hpc
+    - slurm
+    - cluster
+    - build
+    - jwt
+    - compile
+
+# Зависимости роли
+dependencies:
+  - role: common
+    # Роль common должна быть выполнена до slurm_build
+    # Она устанавливает базовые пакеты, MUNGE, пользователя slurm
+
+# Эта роль должна выполняться только на master узле для сборки
+# Но распространение идет на все узлы кластера
+allow_duplicates: false

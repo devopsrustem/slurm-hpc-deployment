@@ -1,0 +1,61 @@
+# roles/slurm_master/tasks/services.yml
+---
+# =============================================================================
+# SYSTEMD SERVICES (упрощенная версия)
+# =============================================================================
+
+- name: "[SERVICES] Создание systemd unit для slurmctld"
+  template:
+    src: slurmctld.service.j2
+    dest: /etc/systemd/system/slurmctld.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart slurmctld
+  tags: services
+
+- name: "[SERVICES] Создание systemd unit для slurmdbd"
+  template:
+    src: slurmdbd.service.j2
+    dest: /etc/systemd/system/slurmdbd.service
+    owner: root
+    group: root
+    mode: '0644'
+  when: slurm_db_enabled | default(true)
+  notify: restart slurmdbd
+  tags: services
+
+- name: "[SERVICES] Перезагрузка systemd daemon"
+  systemd:
+    daemon_reload: yes
+  tags: services
+
+- name: "[SERVICES] Запуск slurmdbd (сначала база)"
+  systemd:
+    name: slurmdbd
+    enabled: yes
+    state: started
+  when: slurm_db_enabled | default(true)
+  tags: services
+
+- name: "[SERVICES] Пауза после запуска slurmdbd"
+  pause:
+    seconds: 3
+  when: slurm_db_enabled | default(true)
+  tags: services
+
+- name: "[SERVICES] Запуск slurmctld (после базы)"
+  systemd:
+    name: slurmctld
+    enabled: yes
+    state: started
+  tags: services
+
+- name: "[SERVICES] Сервисы запущены"
+  debug:
+    msg: |
+      🎛️ Slurm сервисы:
+      ✅ slurmdbd запущен
+      ✅ slurmctld запущен
+      🔧 Проверьте: systemctl status slurmctld slurmdbd
+  tags: services

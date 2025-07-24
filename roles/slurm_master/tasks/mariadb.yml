@@ -1,0 +1,93 @@
+# roles/slurm_master/tasks/mariadb.yml
+---
+# =============================================================================
+# MARIADB SETUP FOR SLURM (только shell команды, НЕ ansible модули)
+# =============================================================================
+
+- name: "[MARIADB] Проверка работы свежей MariaDB"
+  shell: sudo mysql -e "SELECT VERSION();"
+  register: mariadb_version
+  changed_when: false
+  tags: mariadb
+
+- name: "[MARIADB] Показать версию MariaDB"
+  debug:
+    msg: "🐬 MariaDB версия: {{ mariadb_version.stdout_lines[1] | default('unknown') }}"
+  tags: mariadb
+
+- name: "[MARIADB] Создание пользователя и базы Slurm (исправленная версия)"
+  shell: |
+    sudo mysql -e "CREATE USER IF NOT EXISTS '{{ slurm_db_user }}'@'localhost' IDENTIFIED BY '{{ slurm_db_password }}';"
+    sudo mysql -e "CREATE USER IF NOT EXISTS '{{ slurm_db_user }}'@'%' IDENTIFIED BY '{{ slurm_db_password }}';"
+    sudo mysql -e "CREATE DATABASE IF NOT EXISTS {{ slurm_db_name }};"
+    sudo mysql -e "GRANT ALL PRIVILEGES ON {{ slurm_db_name }}.* TO '{{ slurm_db_user }}'@'localhost';"
+    sudo mysql -e "GRANT ALL PRIVILEGES ON {{ slurm_db_name }}.* TO '{{ slurm_db_user }}'@'%';"
+    sudo mysql -e "FLUSH PRIVILEGES;"
+  register: mariadb_setup
+  tags: mariadb
+
+- name: "[MARIADB] Результат создания пользователя"
+  debug:
+    msg: |
+      📝 Создание пользователя: {{ mariadb_setup.rc == 0 | ternary('✅ УСПЕХ', '❌ ошибка') }}
+      {% if mariadb_setup.rc != 0 %}
+      ⚠️  Ошибка: {{ mariadb_setup.stderr }}
+      {% endif %}
+  tags: mariadb
+
+- name: "[MARIADB] Тест подключения пользователя Slurm"
+  shell: mysql -u{{ slurm_db_user }} -p{{ slurm_db_password }} -e "USE {{ slurm_db_name }}; SELECT 1 AS test;"
+  register: slurm_test
+  changed_when: false
+  failed_when: false
+  tags: mariadb
+
+- name: "[MARIADB] Проверка списка баз данных"
+  shell: mysql -u{{ slurm_db_user }} -p{{ slurm_db_password }} -e "SHOW DATABASES;"
+  register: databases_list
+  changed_when: false
+  failed_when: false
+  tags: mariadb
+
+- name: "[MARIADB] Создание конфига оптимизации для Slurm"
+  copy:
+    dest: /etc/mysql/mariadb.conf.d/99-slurm.cnf
+    content: |
+      # Slurm optimizations
+      [mysqld]
+      innodb_buffer_pool_size = 128M
+      innodb_lock_wait_timeout = 900
+      innodb_log_file_size = 64M
+      max_connections = 500
+      query_cache_size = 32M
+      query_cache_type = 1
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart mariadb
+  tags: mariadb
+
+- name: "[MARIADB] Перезапуск MariaDB для применения настроек"
+  systemd:
+    name: mariadb
+    state: restarted
+  tags: mariadb
+
+
+- name: "[MARIADB] Финальный результат"
+  debug:
+    msg: |
+      🐬 MariaDB настройка завершена:
+      👤 Пользователь: {{ slurm_db_user }}
+      📊 База: {{ slurm_db_name }}
+      ✅ Подключение: {{ slurm_test.rc == 0 | ternary('РАБОТАЕТ!', 'ошибка') }}
+      
+      📋 Доступные базы:
+      {{ databases_list.stdout | default('не получены') }}
+      
+      {% if slurm_test.rc == 0 %}
+      🎉 ГОТОВ ДЛЯ SLURM!
+      {% else %}
+      ❌ Проблема: {{ slurm_test.stderr | default('неизвестно') }}
+      {% endif %}
+  tags: mariadb

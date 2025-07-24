@@ -1,0 +1,144 @@
+{
+    "_ansible_facts_gathered": true,
+    "ansible_apparmor": {
+        "status": "enabled"
+    },
+    "ansible_architecture": "x86_64",
+    "ansible_cmdline": {
+        "BOOT_IMAGE": "/boot/vmlinuz-6.8.0-64-generic",
+        "ro": true,
+        "root": "UUID=20b4a405-8647-43e4-9f77-2bf59644ef77"
+    },
+    "ansible_date_time": {
+        "date": "2025-07-23",
+        "day": "23",
+        "epoch": "1753303225",
+        "epoch_int": "1753303225",
+        "hour": "23",
+        "iso8601": "2025-07-23T20:40:25Z",
+        "iso8601_basic": "20250723T234025318125",
+        "iso8601_basic_short": "20250723T234025",
+        "iso8601_micro": "2025-07-23T20:40:25.318125Z",
+        "minute": "40",
+        "month": "07",
+        "second": "25",
+        "time": "23:40:25",
+        "tz": "MSK",
+        "tz_dst": "MSK",
+        "tz_offset": "+0300",
+        "weekday": "Wednesday",
+        "weekday_number": "3",
+        "weeknumber": "29",
+        "year": "2025"
+    },
+    "ansible_distribution": "Ubuntu",
+    "ansible_distribution_file_parsed": true,
+    "ansible_distribution_file_path": "/etc/os-release",
+    "ansible_distribution_file_variety": "Debian",
+    "ansible_distribution_major_version": "24",
+    "ansible_distribution_release": "noble",
+    "ansible_distribution_version": "24.04",
+    "ansible_dns": {
+        "nameservers": [
+            "127.0.0.53"
+        ],
+        "options": {
+            "edns0": true,
+            "trust-ad": true
+        },
+        "search": [
+            "."
+        ]
+    },
+    "ansible_domain": "",
+    "ansible_effective_group_id": 0,
+    "ansible_effective_user_id": 0,
+    "ansible_env": {
+        "HOME": "/root",
+        "LANG": "en_US.UTF-8",
+        "LOGNAME": "root",
+        "MAIL": "/var/mail/root",
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin",
+        "PWD": "/home/master",
+        "SHELL": "/bin/bash",
+        "SUDO_COMMAND": "/bin/sh -c echo BECOME-SUCCESS-jtutnuxunoolkfaaznsitzgbiibnnusl ; /usr/bin/python3",
+        "SUDO_GID": "1000",
+        "SUDO_UID": "1000",
+        "SUDO_USER": "master",
+        "TERM": "unknown",
+        "USER": "root"
+    },
+    "ansible_fips": false,
+    "ansible_fqdn": "sm02",
+    "ansible_hostname": "sm02",
+    "ansible_kernel": "6.8.0-64-generic",
+    "ansible_kernel_version": "#67-Ubuntu SMP PREEMPT_DYNAMIC Sun Jun 15 20:23:31 UTC 2025",
+    "ansible_local": {},
+    "ansible_lsb": {
+        "codename": "noble",
+        "description": "Ubuntu 24.04.2 LTS",
+        "id": "Ubuntu",
+        "major_release": "24",
+        "release": "24.04"
+    },
+    "ansible_machine": "x86_64",
+    "ansible_machine_id": "5ba7e044c03444c7b69d0a7d39351ab8",
+    "ansible_nodename": "sm02",
+    "ansible_os_family": "Debian",
+    "ansible_pkg_mgr": "apt",
+    "ansible_proc_cmdline": {
+        "BOOT_IMAGE": "/boot/vmlinuz-6.8.0-64-generic",
+        "ro": true,
+        "root": "UUID=20b4a405-8647-43e4-9f77-2bf59644ef77"
+    },
+    "ansible_python": {
+        "executable": "/usr/bin/python3",
+        "has_sslcontext": true,
+        "type": "cpython",
+        "version": {
+            "major": 3,
+            "micro": 3,
+            "minor": 12,
+            "releaselevel": "final",
+            "serial": 0
+        },
+        "version_info": [
+            3,
+            12,
+            3,
+            "final",
+            0
+        ]
+    },
+    "ansible_python_version": "3.12.3",
+    "ansible_real_group_id": 0,
+    "ansible_real_user_id": 0,
+    "ansible_selinux": {
+        "status": "disabled"
+    },
+    "ansible_selinux_python_present": true,
+    "ansible_service_mgr": "systemd",
+    "ansible_ssh_host_key_ecdsa_public": "AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBPj/AwsUpz2xs4/yXRspTU7r0GgajVFn4rsaFucYrZO2VvdNLnOM8rqGyMc/3g13btG1G9uNnBCo1V31tQjEFnI=",
+    "ansible_ssh_host_key_ecdsa_public_keytype": "ecdsa-sha2-nistp256",
+    "ansible_ssh_host_key_ed25519_public": "AAAAC3NzaC1lZDI1NTE5AAAAICAaLPHQNwRLCM8CFzux0vEwrZy3OzyYIk6s47lzXM8M",
+    "ansible_ssh_host_key_ed25519_public_keytype": "ssh-ed25519",
+    "ansible_ssh_host_key_rsa_public": "AAAAB3NzaC1yc2EAAAADAQABAAABgQDAu9P6odzSsWvvrOIBZsc4NkGzbuobjGi1KR79ka6r+nm97jUuAYuYlZvB+lac4kOXBezIsUawrXlnUoVujmCnOf0lQESOOUdqcff/KOyBNXaw1Ibj44YM+3DzjAvUeLFGLRD/hYn9kO18W/8qpWfQfjCyKtLs+P59T2OAuzwlDX+P/BsgVm7lkWHwcvRK2sx5wEq1uI2zaN25+6IcI8Fjg34JihuG5hviIBkBXsSgaHXiDfvH0yNon/PVQflEJlUgeAyXN6cT843whCAU7nXY8wNjKG1iC2Ddh+pUP39y/bUcFIXIlIszohM/qWOl1UuZyyKdsVM9anMEifxdeYNZjmd46WAwCmGgd5Hx0saEmn3J3FQpJMMaWT4OQOkZNtEqef5K6+m9v9YYVkpYoi0qGS0mklObnt8GCgsNcW541CTL1cXNLaqArBEn9Naevjc/VGPyj+/OMne3qd1UkQeBsr8G5ePushrmJ1twrJDKRL8/0BP9J3TxtNLZC9mBA78=",
+    "ansible_ssh_host_key_rsa_public_keytype": "ssh-rsa",
+    "ansible_system": "Linux",
+    "ansible_system_capabilities": [],
+    "ansible_system_capabilities_enforced": "False",
+    "ansible_user_dir": "/root",
+    "ansible_user_gecos": "root",
+    "ansible_user_gid": 0,
+    "ansible_user_id": "root",
+    "ansible_user_shell": "/bin/bash",
+    "ansible_user_uid": 0,
+    "ansible_userspace_architecture": "x86_64",
+    "ansible_userspace_bits": "64",
+    "gather_subset": [
+        "!hardware",
+        "!ohai",
+        "!facter"
+    ],
+    "module_setup": true
+}

@@ -1,0 +1,34 @@
+# roles/slurm_master/templates/slurmctld.service.j2
+[Unit]
+Description=Slurm controller daemon
+After=network.target munge.service
+{% if slurm_db_enabled %}
+After=slurmdbd.service
+Wants=slurmdbd.service
+{% endif %}
+Wants=munge.service
+ConditionPathExists={{ slurm_config_dir }}/slurm.conf
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/slurmctld -D -i
+KillMode=process
+LimitNOFILE=65536
+LimitMEMLOCK=infinity
+LimitSTACK=infinity
+
+# Restart settings
+Restart=on-failure
+RestartSec=5s
+StartLimitInterval=0
+
+# User and permissions
+User={{ slurm_user }}
+Group={{ slurm_group }}
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

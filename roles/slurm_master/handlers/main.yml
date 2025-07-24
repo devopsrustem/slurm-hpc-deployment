@@ -1,0 +1,26 @@
+# roles/slurm_master/handlers/main.yml
+---
+# =============================================================================
+# SLURM MASTER HANDLERS (упрощенная версия)
+# =============================================================================
+
+- name: restart slurmctld
+  systemd:
+    name: slurmctld
+    state: restarted
+    daemon_reload: yes
+  listen: "restart slurmctld"
+
+- name: restart slurmdbd
+  systemd:
+    name: slurmdbd
+    state: restarted
+    daemon_reload: yes
+  listen: "restart slurmdbd"
+  when: slurm_db_enabled | default(true)
+
+- name: restart mariadb
+  systemd:
+    name: mariadb
+    state: restarted
+    enabled: true
